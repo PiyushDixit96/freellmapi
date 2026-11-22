@@ -1,39 +1,72 @@
+# FreeLLMAPI - Production Docker Compose Configuration
+# Documentation: https://github.com/PiyushDixit96/freellmapi
+
 services:
   freellmapi:
-    image: ghcr.io/tashfeenahmed/freellmapi:latest
+    container_name: freellmapi
+    image: freellmapi:latest
     build:
       context: .
       dockerfile: Dockerfile
+    restart: unless-stopped
+    stop_grace_period: 15s
+
+    # Configuration loaded from .env (e.g., ENCRYPTION_KEY, PROXY_URL, HOST_BIND)
+    # Generate ENCRYPTION_KEY with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
     env_file:
-      - .env
+      - path: .env
+        required: false
+
     environment:
-      NODE_ENV: production
-      PORT: 3001
-    # Bound to localhost by default — FreeLLMAPI is single-user and must not be
-    # exposed to the internet. Set HOST_BIND=0.0.0.0 to reach it from your LAN.
+      - NODE_ENV=production
+      - PORT=3001
+
+    # Bound to 127.0.0.1 (localhost) by default for single-user security.
+    # Set HOST_BIND=0.0.0.0 in .env to allow access across your local network (LAN).
     ports:
       - "${HOST_BIND:-127.0.0.1}:${PORT:-3001}:3001"
+
+    # Persistent storage for SQLite database, configuration, and encrypted credentials
     volumes:
       - freellmapi-data:/app/server/data
-    # Makes `host.docker.internal` resolve to the host from inside the
-    # container. Docker Desktop provides it already; plain Docker on Linux does
-    # not, and without it the documented way to reach a proxy running on the
-    # host (PROXY_URL=http://host.docker.internal:7890) fails to resolve.
+
+    # Resolves host.docker.internal to host machine on Linux (built-in on Docker Desktop).
+    # Allows container to route outbound traffic through a host proxy (e.g. PROXY_URL=http://host.docker.internal:7890).
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    restart: unless-stopped
+
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+
+    # Log rotation preventing unbounded disk space consumption
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Healthcheck to verify the server is live and responsive
     healthcheck:
       test:
         [
           "CMD",
           "node",
           "-e",
-          "fetch('http://127.0.0.1:3001/api/ping').then((res) => { if (!res.ok) process.exit(1); }).catch(() => process.exit(1));"
+          "fetch('http://127.0.0.1:3001/api/ping').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1));"
         ]
       interval: 30s
       timeout: 5s
       start_period: 15s
       retries: 3
 
+    networks:
+      - freellmapi-net
+
 volumes:
   freellmapi-data:
+    name: freellmapi-data
+
+networks:
+  freellmapi-net:
+    name: freellmapi-net

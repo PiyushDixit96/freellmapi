@@ -7,11 +7,13 @@ const CHROME_PATH = process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrom
 const ARTIFACT_DIR = process.env.ARTIFACT_DIR || 'C:\\Users\\Lenov\\.gemini\\antigravity\\brain\\42ef4afd-5a60-473e-924d-fe16f14a3323';
 
 function getSetupCodeFromDocker() {
-  try {
-    const logs = execSync('docker logs freellmapi-keys-debug', { encoding: 'utf-8' });
-    const match = logs.match(/First-run setup code:\s*([A-Z0-9]+)/);
-    if (match) return match[1];
-  } catch (e) {}
+  for (const name of ['freellmapi', 'freellmapi-keys-debug']) {
+    try {
+      const logs = execSync(`docker logs ${name}`, { encoding: 'utf-8' });
+      const match = logs.match(/First-run setup code:\s*([A-Z0-9]+)/);
+      if (match) return match[1];
+    } catch (e) {}
+  }
   return undefined;
 }
 
