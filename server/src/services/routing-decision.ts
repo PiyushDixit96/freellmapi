@@ -17,7 +17,7 @@ import type { PresetStrategy } from './scoring.js';
 // One decision per user turn: the answer is cached on the text it was asked
 // about, so an agent's tool-call loop inside one turn asks once.
 
-export const DECISION_PRESETS: readonly PresetStrategy[] = ['smartest', 'fastest', 'balanced', 'reliable'];
+export const DECISION_PRESETS: readonly PresetStrategy[] = ['smartest', 'fastest', 'balanced', 'reliable', 'benchmark'];
 
 const DECISION_MODEL_KEY = 'routing_decision_model';
 const MIN_PROBABILITY_KEY = 'routing_decision_min_probability';
@@ -44,6 +44,7 @@ const QUESTION = {
     fastest: 'Simple or short: a quick answer matters most and a smaller model will do.',
     balanced: 'Ordinary request: a sensible mix of quality and speed.',
     reliable: 'Must work first time: strict formats, structured output or an automated step that cannot be retried by hand.',
+    benchmark: 'Benchmarked excellence: demanding reasoning or verified tool calling requiring highest empirical benchmark quality.',
   } satisfies Record<PresetStrategy, string>,
 };
 
@@ -106,7 +107,7 @@ function cachePut(key: string, pick: DecisionPick): void {
 
 export function resetDecisionRoutingCache(): void {
   cache.clear();
-  stats.counts = { smartest: 0, fastest: 0, balanced: 0, reliable: 0 };
+  stats.counts = { smartest: 0, fastest: 0, balanced: 0, reliable: 0, benchmark: 0 };
   stats.fallbacks = {};
   stats.recent = [];
 }
@@ -117,7 +118,7 @@ const stats: {
   counts: Record<PresetStrategy, number>;
   fallbacks: Partial<Record<DecisionPickSource, number>>;
   recent: Array<DecisionPick & { at: number }>;
-} = { counts: { smartest: 0, fastest: 0, balanced: 0, reliable: 0 }, fallbacks: {}, recent: [] };
+} = { counts: { smartest: 0, fastest: 0, balanced: 0, reliable: 0, benchmark: 0 }, fallbacks: {}, recent: [] };
 
 function record(pick: DecisionPick): void {
   stats.counts[pick.strategy]++;

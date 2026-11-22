@@ -30,13 +30,13 @@ export interface RoutingWeights {
 
 // Strategy is either the legacy manual chain ('priority'), one of the bandit
 // presets, 'custom' (a user-tuned weight vector persisted in settings — see
-// router.ts) or 'decision' (#1354: a decision model picks one of the four
-// presets per request — see services/routing-decision.ts). Each resolves to a
-// weight vector — the engine is identical.
-export type RoutingStrategy = 'priority' | 'balanced' | 'smartest' | 'fastest' | 'reliable' | 'custom' | 'decision';
+// router.ts), 'decision' (#1354: a decision model picks one of the four
+// presets per request — see services/routing-decision.ts), or 'benchmark'
+// (empirical academic benchmarks and verified tool-calling lead the scoring).
+export type RoutingStrategy = 'priority' | 'balanced' | 'smartest' | 'fastest' | 'reliable' | 'custom' | 'decision' | 'benchmark';
 
 /** The presets a decision model may choose between, per request. */
-export type PresetStrategy = 'balanced' | 'smartest' | 'fastest' | 'reliable';
+export type PresetStrategy = 'balanced' | 'smartest' | 'fastest' | 'reliable' | 'benchmark';
 
 // How the router picks BETWEEN several keys of one platform, once a model has
 // been chosen. Deliberately not a RoutingStrategy: model ranking and key
@@ -56,6 +56,8 @@ export const BANDIT_PRESETS: Record<PresetStrategy, RoutingWeights> = {
   fastest: { reliability: 0.35, speed: 0.55, intelligence: 0.1 },
   // Reliability dominates — for clients that just want it to work.
   reliable: { reliability: 0.7, speed: 0.15, intelligence: 0.15 },
+  // Benchmark-driven: empirical academic quality & verified tool-calling lead, balanced with measured latency.
+  benchmark: { reliability: 0.30, speed: 0.25, intelligence: 0.45 },
 };
 
 // Analytics-driven routing is on by default ('balanced'). Operators who want the
@@ -397,7 +399,16 @@ export function tierValue(sizeLabel: string): number {
 // (sqrt(1000)*31 ≈ 980 < 1000) still beats the best rank of the tier below.
 const RANK_SCALE = 31;
 
-export function intelligenceComposite(sizeLabel: string, intelligenceRank: number): number {
+export function intelligenceComposite(
+  sizeLabel: string,
+  intelligenceRank: number,
+  benchmarkQuality?: number | null,
+): number {
+  // If empirical benchmark quality (0..100) is available, integrate it directly.
+  // It refines the model's intelligence axis with real academic & verified data.
+  if (benchmarkQuality != null && benchmarkQuality > 0) {
+    return tierValue(sizeLabel) * 1000 + benchmarkQuality * 10 - Math.sqrt(Math.max(1, intelligenceRank)) * (RANK_SCALE / 2);
+  }
   // tier*1000 keeps tiers strictly separated; -sqrt(rank)*RANK_SCALE prefers
   // lower rank in-tier but lets rank edits move the axis (see #673).
   return tierValue(sizeLabel) * 1000 - Math.sqrt(Math.max(1, intelligenceRank)) * RANK_SCALE;

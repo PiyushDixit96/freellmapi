@@ -11,6 +11,7 @@ import {
   RefreshCw, 
   Search, 
   Sparkles, 
+  Timer,
   Wrench, 
   X,
   Zap 
@@ -117,6 +118,36 @@ export default function BenchmarksPage() {
     },
   })
 
+  // Autopilot status query
+  const { data: autopilotStatus, refetch: refetchAutopilot } = useQuery<{
+    enabled: boolean;
+    intervalMs: number;
+    lastRunAt: string | null;
+    lastProbedModel: string | null;
+    runsTotal: number;
+  }>({
+    queryKey: ['benchmark-autopilot'],
+    queryFn: () => apiFetch('/api/benchmarks/autopilot/status'),
+    refetchInterval: 15_000,
+  })
+
+  // Trigger autopilot pass mutation
+  const triggerAutopilotMutation = useMutation({
+    mutationFn: () => apiFetch('/api/benchmarks/autopilot/trigger', { method: 'POST' }),
+    onSuccess: (res: any) => {
+      refetchAutopilot()
+      queryClient.invalidateQueries({ queryKey: ['benchmarks'] })
+      if (res.ok) {
+        toast.success(`Autopilot probed ${res.model}: ${res.result?.avgTokensPerSec ?? 0} tok/s`)
+      } else {
+        toast.info(res.error ?? 'Autopilot pass completed')
+      }
+    },
+    onError: (err: any) => {
+      toast.error(`Autopilot error: ${err?.message ?? err}`)
+    },
+  })
+
   // Seed baseline mutation
   const seedMutation = useMutation({
     mutationFn: () => apiFetch('/api/benchmarks/seed', { method: 'POST' }),
@@ -150,6 +181,16 @@ export default function BenchmarksPage() {
             <Button
               variant="outline"
               size="sm"
+              onClick={() => triggerAutopilotMutation.mutate()}
+              disabled={triggerAutopilotMutation.isPending}
+              title="Trigger background autopilot micro-benchmarking pass"
+            >
+              <Timer className={`mr-1.5 size-4 text-cyan-500 ${triggerAutopilotMutation.isPending ? 'animate-spin' : ''}`} />
+              Autopilot ({autopilotStatus?.runsTotal ?? 0})
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => seedMutation.mutate()}
               disabled={seedMutation.isPending}
             >
@@ -168,6 +209,25 @@ export default function BenchmarksPage() {
           </div>
         }
       />
+
+      {/* Autopilot Background Prober Info Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="flex size-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>
+            <strong className="text-foreground">Autopilot Micro-Benchmarking:</strong>{' '}
+            {autopilotStatus?.enabled ? 'Active' : 'Standby'} (cadence: every {Math.round((autopilotStatus?.intervalMs ?? 1800000) / 60000)}m)
+          </span>
+          {autopilotStatus?.lastProbedModel && (
+            <span className="text-muted-foreground">
+              · Last auto-probed: <code className="font-mono text-[11px] text-foreground">{autopilotStatus.lastProbedModel}</code>
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <span>Scheduled passes: <strong className="text-foreground">{autopilotStatus?.runsTotal ?? 0}</strong></span>
+        </div>
+      </div>
 
       {/* Top Metric Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

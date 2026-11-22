@@ -6,6 +6,10 @@ import {
   seedExternalBenchmarks,
 } from '../services/benchmark-service.js';
 import { runMicroBenchmark } from '../services/benchmark-runner.js';
+import {
+  getBenchmarkAutopilotStatus,
+  triggerBenchmarkAutopilotPass,
+} from '../services/benchmark-autopilot.js';
 
 export const benchmarksRouter = Router();
 
@@ -72,3 +76,19 @@ benchmarksRouter.post('/run', async (req, res) => {
     res.status(500).json({ error: err?.message ?? 'Micro-benchmark failed to execute' });
   }
 });
+
+// GET /api/benchmarks/autopilot/status — autopilot status
+benchmarksRouter.get('/autopilot/status', (_req, res) => {
+  res.json(getBenchmarkAutopilotStatus());
+});
+
+// POST /api/benchmarks/autopilot/trigger — manually trigger an autopilot pass
+benchmarksRouter.post('/autopilot/trigger', async (_req, res) => {
+  try {
+    const result = await triggerBenchmarkAutopilotPass();
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message ?? 'Autopilot pass failed' });
+  }
+});
+

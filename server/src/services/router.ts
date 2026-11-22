@@ -44,6 +44,7 @@ import { modelStatsKey, endpointScopeForBaseUrl } from '../lib/endpoint-scope.js
 import { isToolBenched } from '../lib/tool-capability.js';
 import { parseModelScope, scopeAllows } from '../lib/model-scope.js';
 import { getKeyQuotaHeadroom, inferQuotaPoolKey } from './provider-quota.js';
+import { getBenchmarkScoreForModel } from './benchmark-service.js';
 import type { BaseProvider } from '../providers/base.js';
 import type { Platform } from '@freellmapi/shared/types.js';
 import type { Db } from '../db/types.js';
@@ -567,7 +568,7 @@ export const EXPLORE_CHANCE = 0.1;
 /** A model counts as "has data" once its decay-weighted success+failure
  *  pseudo-count reaches this many samples. */
 export const EXPLORE_MIN_SAMPLES = 5;
-const VALID_STRATEGIES: RoutingStrategy[] = ['priority', 'balanced', 'smartest', 'fastest', 'reliable', 'custom', 'decision'];
+const VALID_STRATEGIES: RoutingStrategy[] = ['priority', 'balanced', 'smartest', 'fastest', 'reliable', 'custom', 'decision', 'benchmark'];
 
 export function getRoutingStrategy(): RoutingStrategy {
   const raw = getSetting(STRATEGY_KEY);
@@ -1168,8 +1169,9 @@ function scoreChainEntry(
   }
 
   const speed = speedScore(stats?.tokPerSec ?? 0, stats?.avgTtfbMs ?? null);
+  const bm = getBenchmarkScoreForModel(entry.platform, entry.model_id);
   const intelligence = intelligenceScore(
-    intelligenceComposite(entry.size_label, entry.intelligence_rank), intelMin, intelMax,
+    intelligenceComposite(entry.size_label, entry.intelligence_rank, bm?.qualityScore), intelMin, intelMax,
   );
 
   // Scale the per-key monthly budget by the usable key count for this platform,
@@ -1314,7 +1316,10 @@ function orderChain(chain: ChainRow[], strategy: RoutingStrategy, sampled = true
   // Reliability floor: drop chronically-failing models before scoring (#filter).
   chain = applyReliabilityFloor(chain);
 
-  const composites = chain.map(e => intelligenceComposite(e.size_label, e.intelligence_rank));
+  const composites = chain.map(e => {
+    const bm = getBenchmarkScoreForModel(e.platform, e.model_id);
+    return intelligenceComposite(e.size_label, e.intelligence_rank, bm?.qualityScore);
+  });
   const intelMin = composites.length ? Math.min(...composites) : 0;
   const intelMax = composites.length ? Math.max(...composites) : 0;
   const keyCounts = usableKeyCountsByPlatform(getDb());
@@ -2562,7 +2567,10 @@ export function getRoutingScores(): { strategy: RoutingStrategy; keySelectionStr
   // For display we score under 'balanced' weights when in priority mode, so the
   // table still shows a meaningful ranking even with the bandit turned off.
   const weights = weightsFor(strategy) ?? BANDIT_PRESETS.balanced;
-  const composites = chain.map(e => intelligenceComposite(e.size_label, e.intelligence_rank));
+  const composites = chain.map(e => {
+    const bm = getBenchmarkScoreForModel(e.platform, e.model_id);
+    return intelligenceComposite(e.size_label, e.intelligence_rank, bm?.qualityScore);
+  });
   const intelMin = composites.length ? Math.min(...composites) : 0;
   const intelMax = composites.length ? Math.max(...composites) : 0;
   const keyCounts = usableKeyCountsByPlatform(db);

@@ -5,7 +5,11 @@ import {
   seedExternalBenchmarks,
   getBenchmarkSummary,
   getModelBenchmarkDetail,
+  getBenchmarkScoreMap,
+  getBenchmarkScoreForModel,
 } from '../../services/benchmark-service.js';
+import { getRoutingStrategy, setRoutingStrategy, getRoutingScores } from '../../services/router.js';
+import { getBenchmarkAutopilotStatus } from '../../services/benchmark-autopilot.js';
 
 describe('Benchmark Service', () => {
   beforeAll(() => {
@@ -85,5 +89,37 @@ describe('Benchmark Service', () => {
       expect(detail.providerComparisons).toBeDefined();
       expect(Array.isArray(detail.recentProbes)).toBe(true);
     }
+  });
+
+  it('retrieves fast benchmark score map for scoring router', () => {
+    const db = getDb();
+    const map = getBenchmarkScoreMap(db);
+    expect(map.size).toBeGreaterThan(0);
+
+    const score = getBenchmarkScoreForModel('google', 'gemini-2.5-flash', db);
+    expect(score).not.toBeNull();
+    expect(score?.qualityScore).toBeGreaterThan(0);
+  });
+
+  it('supports benchmark-driven routing strategy and calculates scores', () => {
+    const prevStrategy = getRoutingStrategy();
+    try {
+      setRoutingStrategy('benchmark');
+      expect(getRoutingStrategy()).toBe('benchmark');
+
+      const scores = getRoutingScores();
+      expect(scores.strategy).toBe('benchmark');
+      expect(scores.weights).toEqual({ reliability: 0.30, speed: 0.25, intelligence: 0.45 });
+      expect(scores.scores.length).toBeGreaterThan(0);
+    } finally {
+      setRoutingStrategy(prevStrategy);
+    }
+  });
+
+  it('provides autopilot status', () => {
+    const status = getBenchmarkAutopilotStatus();
+    expect(typeof status.enabled).toBe('boolean');
+    expect(typeof status.intervalMs).toBe('number');
+    expect(typeof status.runsTotal).toBe('number');
   });
 });

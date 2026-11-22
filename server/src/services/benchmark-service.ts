@@ -105,6 +105,7 @@ export function recordBenchmark(db: Db, record: BenchmarkRecord): void {
     record.sample_size ?? 1,
     record.details_json ?? null,
   );
+  clearBenchmarkCache();
 }
 
 /** Baseline tier weights to composite quality score */
@@ -119,6 +120,14 @@ function baselineQualityScore(sizeLabel: string, intelligenceRank: number): numb
   // Modulate slightly with within-tier intelligence rank (1 is best)
   const rankAdjustment = Math.max(-10, Math.min(6, (15 - intelligenceRank) * 0.4));
   return Math.max(10, Math.min(99, Math.round(base + rankAdjustment)));
+}
+
+/** Compute composite quality index (0..100) from academic benchmarks */
+export function computeQualityIndex(aa?: number | null, elo?: number | null, swe?: number | null): number {
+  if (aa && aa > 0) return aa;
+  if (elo && elo > 0) return Math.max(10, Math.min(99, Math.round((elo - 1000) * 0.25)));
+  if (swe && swe > 0) return Math.max(10, Math.min(99, Math.round(swe * 1.1)));
+  return 75;
 }
 
 /** Seed realistic external benchmark metrics for prominent models in catalog */
@@ -187,6 +196,7 @@ export function seedExternalBenchmarks(db: Db): { seeded: number } {
     }
   })();
 
+  clearBenchmarkCache();
   return { seeded: seededCount };
 }
 
@@ -539,3 +549,97 @@ export function getModelBenchmarkDetail(db: Db, modelParam: string): ModelBenchm
     recentProbes: mappedProbes,
   };
 }
+
+export interface BenchmarkQualityEntry {
+  qualityScore: number;
+  speedScore: number;
+  toolAccuracy: number | null;
+}
+
+let benchmarkScoreCache: {
+  db: Db;
+  at: number;
+  map: Map<string, BenchmarkQualityEntry>;
+} | null = null;
+
+export function clearBenchmarkCache(): void {
+  benchmarkScoreCache = null;
+}
+
+const BENCHMARK_SCORE_CACHE_TTL_MS = 30_000;
+
+export function getBenchmarkScoreMap(db?: Db): Map<string, BenchmarkQualityEntry> {
+  const database = db ?? getDb();
+  if (
+    benchmarkScoreCache &&
+    benchmarkScoreCache.db === database &&
+    Date.now() - benchmarkScoreCache.at < BENCHMARK_SCORE_CACHE_TTL_MS
+  ) {
+    return benchmarkScoreCache.map;
+  }
+
+  const map = new Map<string, BenchmarkQualityEntry>();
+
+  try {
+    const rows = database.prepare(`
+      SELECT platform, model_id, metric_name, metric_value
+      FROM model_benchmarks
+      WHERE metric_name IN ('aa_intelligence', 'arena_elo', 'swe_bench', 'tool_call_accuracy', 'tokens_per_sec')
+      ORDER BY id ASC
+    `).all() as Array<{
+      platform: string;
+      model_id: string;
+      metric_name: string;
+      metric_value: number;
+    }>;
+
+    const interim = new Map<string, {
+      platform: string;
+      modelId: string;
+      aa?: number;
+      elo?: number;
+      swe?: number;
+      tool?: number;
+      speed?: number;
+    }>();
+
+    for (const r of rows) {
+      const key = `${r.platform}:${r.model_id}`;
+      if (!interim.has(key)) {
+        interim.set(key, { platform: r.platform, modelId: r.model_id });
+      }
+      const item = interim.get(key)!;
+      if (r.metric_name === 'aa_intelligence') item.aa = r.metric_value;
+      if (r.metric_name === 'arena_elo') item.elo = r.metric_value;
+      if (r.metric_name === 'swe_bench') item.swe = r.metric_value;
+      if (r.metric_name === 'tool_call_accuracy') item.tool = r.metric_value;
+      if (r.metric_name === 'tokens_per_sec') item.speed = r.metric_value;
+    }
+
+    for (const [key, item] of interim) {
+      const q = computeQualityIndex(item.aa ?? null, item.elo ?? null, item.swe ?? null);
+      const entry: BenchmarkQualityEntry = {
+        qualityScore: q,
+        speedScore: item.speed ? Math.min(100, Math.round(item.speed)) : 60,
+        toolAccuracy: item.tool ?? null,
+      };
+      map.set(key, entry);
+      map.set(item.modelId, entry);
+    }
+  } catch (err: any) {
+    console.error('getBenchmarkScoreMap error:', err?.message ?? err);
+  }
+
+  benchmarkScoreCache = { db: database, at: Date.now(), map };
+  return map;
+}
+
+export function getBenchmarkScoreForModel(
+  platform: string,
+  modelId: string,
+  db?: Db,
+): BenchmarkQualityEntry | null {
+  const map = getBenchmarkScoreMap(db);
+  return map.get(`${platform}:${modelId}`) ?? map.get(modelId) ?? null;
+}
+

@@ -382,7 +382,9 @@
     "decisionSetupHelp": "决策路由会询问一个免费的决策模型:哪个策略适合这个请求。它需要以下任一服务商的密钥,两者都有免费额度,无需绑卡。",
     "decisionAddKey": "添加 {provider} 密钥",
     "decisionNoModels": "还没有启用任何决策模型。请在「模型 → 决策」中启用一个。",
-    "decisionOpenModels": "打开决策模型"
+    "decisionOpenModels": "打开决策模型",
+    "benchmark": "Benchmark-Driven",
+    "benchmarkBlurb": "Route by verified academic benchmarks and empirical live latency. Intelligence 45%, reliability 30%, speed 25%."
   },
   "penaltyInspector": {
     "title": "路由压力",

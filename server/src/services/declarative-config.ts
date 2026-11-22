@@ -125,7 +125,7 @@ const declarativeConfigSchema = z.object({
   models: z.array(modelSchema).optional(),
   fallback: z.array(fallbackEntrySchema).optional(),
   routing: z.object({
-    strategy: z.enum(['priority', 'balanced', 'smartest', 'fastest', 'reliable', 'custom', 'decision']),
+    strategy: z.enum(['priority', 'balanced', 'smartest', 'fastest', 'reliable', 'custom', 'decision', 'benchmark']),
     weights: z.object({
       reliability: z.number().nonnegative(),
       speed: z.number().nonnegative(),
