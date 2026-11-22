@@ -82,13 +82,15 @@ export default function EmbeddingDetailPage() {
               <p className="mt-0.5 mb-3 text-xs text-muted-foreground">{t('models.providerIdsHint')}</p>
               <div className="space-y-1.5">
                 {fam.providers.map(p => (
-                  <div key={p.id} className={`flex items-center gap-2 text-xs ${p.enabled ? '' : 'opacity-50'}`}>
-                    <span className="w-28 shrink-0 text-muted-foreground">{p.platform}</span>
+                  <div key={p.id} className={`flex flex-wrap items-center gap-2 text-xs py-1 ${p.enabled ? '' : 'opacity-50'}`}>
+                    <span className="w-24 sm:w-28 shrink-0 text-muted-foreground">{p.platform}</span>
                     <code className="min-w-0 flex-1 truncate font-mono text-[11px]">{p.modelId}</code>
-                    {p.keyCount === 0 && (
-                      <span className="text-[10px] rounded-full px-1.5 py-0.5 bg-amber-600/15 text-amber-700 dark:bg-amber-400/15 dark:text-amber-400">{t('models.noKey')}</span>
-                    )}
-                    <CopyButton text={p.modelId} label={t('models.copyModelName')} />
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {p.keyCount === 0 && (
+                        <span className="text-[10px] rounded-full px-1.5 py-0.5 bg-amber-600/15 text-amber-700 dark:bg-amber-400/15 dark:text-amber-400">{t('models.noKey')}</span>
+                      )}
+                      <CopyButton text={p.modelId} label={t('models.copyModelName')} />
+                    </div>
                   </div>
                 ))}
               </div>

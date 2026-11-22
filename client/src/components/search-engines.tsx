@@ -79,31 +79,35 @@ function SearchEngineCard({
         </span>
       </div>
 
-      <div className="flex items-center gap-3">
-        <span className="w-4 text-center text-xs text-muted-foreground tabular-nums">{position ?? '–'}</span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">{e.displayName}</span>
-            {e.keyCount === 0 && (
-              <span className="text-[10px] rounded-full px-1.5 py-0.5 bg-amber-600/15 text-amber-700 dark:bg-amber-400/15 dark:text-amber-400">
-                {t('models.noKey')}
-              </span>
-            )}
-          </div>
-          <div className="truncate text-[11px] text-muted-foreground">
-            {[e.platform, e.quotaLabel].filter(Boolean).join(' · ')}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0 flex-1 basis-48">
+          <span className="w-4 text-center text-xs text-muted-foreground tabular-nums">{position ?? '–'}</span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">{e.displayName}</span>
+              {e.keyCount === 0 && (
+                <span className="text-[10px] rounded-full px-1.5 py-0.5 bg-amber-600/15 text-amber-700 dark:bg-amber-400/15 dark:text-amber-400">
+                  {t('models.noKey')}
+                </span>
+              )}
+            </div>
+            <div className="truncate text-[11px] text-muted-foreground">
+              {[e.platform, e.quotaLabel].filter(Boolean).join(' · ')}
+            </div>
           </div>
         </div>
-        <Switch
-          checked={e.enabled}
-          onCheckedChange={onToggle}
-          disabled={pending}
-          aria-label={e.displayName}
-        />
-        <button type="button" className="text-xs underline disabled:opacity-50"
-          onClick={() => test.mutate()} disabled={!e.enabled || e.keyCount === 0 || test.isPending}>
-          {test.isPending ? t('common.loading') : t('keys.testModel')}
-        </button>
+        <div className="flex items-center gap-2.5 shrink-0">
+          <Switch
+            checked={e.enabled}
+            onCheckedChange={onToggle}
+            disabled={pending}
+            aria-label={e.displayName}
+          />
+          <button type="button" className="text-xs underline disabled:opacity-50"
+            onClick={() => test.mutate()} disabled={!e.enabled || e.keyCount === 0 || test.isPending}>
+            {test.isPending ? t('common.loading') : t('keys.testModel')}
+          </button>
+        </div>
       </div>
       {test.isSuccess && <p role="status" className="mt-2 text-xs">{t('common.success')}</p>}
       {test.isError && <p role="alert" className="mt-2 text-xs text-destructive">{test.error.message}</p>}

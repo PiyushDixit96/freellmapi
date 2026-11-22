@@ -667,7 +667,7 @@ export function SettingsDialog({
               breakpoint-swap the navbar uses for its own navigation. */}
           <nav
             aria-label={t('settings.sections')}
-            className="flex shrink-0 gap-1 overflow-x-auto border-b p-2 sm:w-48 sm:flex-col sm:overflow-x-visible sm:border-b-0 sm:border-e sm:p-3"
+            className="flex shrink-0 gap-1 overflow-x-auto border-b p-2 sm:w-48 sm:flex-col sm:overflow-x-visible sm:border-b-0 sm:border-e sm:p-3 touch-pan-x [-webkit-overflow-scrolling:touch]"
           >
             {SECTIONS.map(item => {
               const Icon = item.icon

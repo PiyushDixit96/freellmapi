@@ -219,7 +219,7 @@ export function CommandPalette() {
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-start justify-center bg-black/40 px-4 pt-[18vh] backdrop-blur-[2px]"
+      className="fixed inset-0 z-[70] flex items-start justify-center bg-black/40 px-3 sm:px-4 pt-[6vh] sm:pt-[15vh] backdrop-blur-[2px]"
       onMouseDown={e => {
         if (e.target === e.currentTarget) hide()
       }}
@@ -250,7 +250,7 @@ export function CommandPalette() {
           />
           <kbd className="rounded border px-1.5 py-0.5 text-[10px] text-muted-foreground">esc</kbd>
         </div>
-        <div ref={listRef} id="command-palette-list" role="listbox" className="max-h-80 overflow-y-auto p-1.5">
+        <div ref={listRef} id="command-palette-list" role="listbox" className="max-h-[min(20rem,60dvh)] overflow-y-auto overscroll-contain p-1.5">
           {filtered.length === 0 && (
             <p className="px-3 py-8 text-center text-sm text-muted-foreground">{t('palette.empty')}</p>
           )}

@@ -701,7 +701,7 @@ export default function FallbackPage() {
             ) : draggable ? (
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleGroupedDragEnd}>
                 <div className="rounded-2xl border overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full min-w-[720px] text-sm">
                     <ModelTableHead />
                     <SortableContext items={renderedGroups.map(g => `grp:${g.key}`)} strategy={verticalListSortingStrategy}>
                       <tbody>
@@ -715,7 +715,7 @@ export default function FallbackPage() {
               </DndContext>
             ) : (
               <div className="rounded-2xl border overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[720px] text-sm">
                   <ModelTableHead />
                   <tbody>
                     {renderedGroups.map(g => (

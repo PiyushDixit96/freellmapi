@@ -130,7 +130,7 @@ function SortableProviderRow({
       )}
       <span className="w-5 text-center font-mono text-xs text-muted-foreground tabular-nums">{i + 1}</span>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium">{p.platform}</span>
           <span className="truncate font-mono text-[11px] text-muted-foreground">{p.modelId}</span>
           {p.keyCount === 0 && (
@@ -155,36 +155,38 @@ function SortableProviderRow({
           {[p.quotaLabel, limitBadges].filter(Boolean).join(' · ')}
         </div>
       </div>
-      {count > 1 && (
-        <div className="flex gap-0.5">
-          <button
-            onClick={() => onMove(-1)}
-            disabled={i === 0}
-            aria-label={t('embeddings.moveUp')}
-            className="rounded-md p-1 text-muted-foreground/60 hover:text-foreground disabled:opacity-25 transition-colors"
+      <div className="flex items-center gap-1.5 shrink-0">
+        {count > 1 && (
+          <div className="flex gap-0.5">
+            <button
+              onClick={() => onMove(-1)}
+              disabled={i === 0}
+              aria-label={t('embeddings.moveUp')}
+              className="rounded-md p-1 text-muted-foreground/60 hover:text-foreground disabled:opacity-25 transition-colors"
+            >
+              <ArrowUp className="size-3.5" />
+            </button>
+            <button
+              onClick={() => onMove(1)}
+              disabled={i === count - 1}
+              aria-label={t('embeddings.moveDown')}
+              className="rounded-md p-1 text-muted-foreground/60 hover:text-foreground disabled:opacity-25 transition-colors"
+            >
+              <ArrowDown className="size-3.5" />
+            </button>
+          </div>
+        )}
+        <Switch checked={p.enabled} onCheckedChange={onToggle} />
+        {p.isCustom && (
+          <ConfirmButton
+            className="text-muted-foreground hover:text-destructive"
+            onConfirm={onDelete}
+            disabled={deleting}
           >
-            <ArrowUp className="size-3.5" />
-          </button>
-          <button
-            onClick={() => onMove(1)}
-            disabled={i === count - 1}
-            aria-label={t('embeddings.moveDown')}
-            className="rounded-md p-1 text-muted-foreground/60 hover:text-foreground disabled:opacity-25 transition-colors"
-          >
-            <ArrowDown className="size-3.5" />
-          </button>
-        </div>
-      )}
-      <Switch checked={p.enabled} onCheckedChange={onToggle} />
-      {p.isCustom && (
-        <ConfirmButton
-          className="text-muted-foreground hover:text-destructive"
-          onConfirm={onDelete}
-          disabled={deleting}
-        >
-          {t('common.remove')}
-        </ConfirmButton>
-      )}
+            {t('common.remove')}
+          </ConfirmButton>
+        )}
+      </div>
     </div>
   )
 }

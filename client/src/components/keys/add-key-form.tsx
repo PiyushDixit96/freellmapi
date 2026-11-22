@@ -193,8 +193,8 @@ export function AddKeyForm({ onSuccess, initialPlatform }: { onSuccess: (offer?:
 
   return (
     <div>
-      <form onSubmit={handleSubmit} className="flex flex-wrap gap-3">
-        <div className="space-y-1.5">
+      <form onSubmit={handleSubmit} className="flex flex-wrap items-start gap-3">
+        <div className="space-y-1.5 w-full sm:w-auto">
           <Label className="text-xs">{t('keys.platform')}</Label>
           <ModelCombobox
             value={platform}
@@ -209,7 +209,7 @@ export function AddKeyForm({ onSuccess, initialPlatform }: { onSuccess: (offer?:
             emptyText={t('keys.noFilterMatch')}
             align="start"
             ariaInvalid={addAttempted && !!platformError}
-            triggerClassName={`flex h-8 w-[220px] items-center justify-between gap-2 whitespace-nowrap rounded-lg border bg-transparent px-3 text-sm outline-none transition-colors hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30 ${addAttempted && platformError ? 'border-destructive' : 'border-input'}`}
+            triggerClassName={`flex h-8 w-full sm:w-[220px] items-center justify-between gap-2 whitespace-nowrap rounded-lg border bg-transparent px-3 text-sm outline-none transition-colors hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30 ${addAttempted && platformError ? 'border-destructive' : 'border-input'}`}
             header={
               <div className="flex items-center gap-2 border-b px-3 py-2">
                 <input
@@ -232,28 +232,28 @@ export function AddKeyForm({ onSuccess, initialPlatform }: { onSuccess: (offer?:
           })()}
         </div>
         {needsProjectId && (
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 w-full sm:w-auto">
             <Label htmlFor="jamai-project-id" className="text-xs">{t('keys.projectId')}</Label>
             <Input id="jamai-project-id" value={projectId} onChange={e => setProjectId(e.target.value)}
-              placeholder="proj_…" autoComplete="off" className="w-[220px] font-mono text-xs"
+              placeholder="proj_…" autoComplete="off" className="w-full sm:w-[220px] font-mono text-xs"
               aria-invalid={addAttempted && !!projectIdError} />
             {addAttempted && <FieldError error={projectIdError} />}
           </div>
         )}
         {needsAccountId && (
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 w-full sm:w-auto">
             <Label className="text-xs">{speechFlow ? 'keyId' : t('keys.accountId')}</Label>
             <Input
               value={accountId}
               onChange={e => setAccountId(e.target.value)}
               placeholder={speechFlow ? 'keyId' : 'a1b2c3d4…'}
-              className="w-[200px] font-mono text-xs"
+              className="w-full sm:w-[200px] font-mono text-xs"
               aria-invalid={addAttempted && !!accountIdError}
             />
             {addAttempted && <FieldError error={accountIdError} />}
           </div>
         )}
-        <div className="space-y-1.5 flex-1 min-w-[240px]">
+        <div className="space-y-1.5 flex-1 min-w-[200px] w-full sm:w-auto">
           <div className="flex items-center justify-between gap-2">
             <Label className="text-xs">{needsProjectId ? `${t('keys.apiToken')} (PAT)` : speechFlow ? 'keySecret' : needsAccountId ? t('keys.apiToken') : t('keys.customApiKey')}</Label>
             {canPasteSeveral && (
@@ -292,16 +292,16 @@ export function AddKeyForm({ onSuccess, initialPlatform }: { onSuccess: (offer?:
             </p>
           )}
         </div>
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 w-full sm:w-auto">
           <Label className="text-xs">{t('keys.label')}</Label>
-          <div className="flex flex-wrap items-center space-x-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <Input
               value={label}
               onChange={e => setLabel(e.target.value)}
               placeholder={t('keys.customDisplayNameOptional')}
-              className="w-[160px]"
+              className="w-full sm:w-[160px]"
             />
-            <Button type="submit" size="sm" disabled={pending}>
+            <Button type="submit" size="sm" disabled={pending} className="w-full sm:w-auto">
               {pending
                 ? t('keys.adding')
                 : severalMode && keyList.length > 1

@@ -46,8 +46,8 @@ function DecisionModelCard({
   })
   return (
     <section className={`rounded-3xl border bg-card p-5 ${m.enabled ? '' : 'opacity-60'}`}>
-      <div className="flex items-center gap-3">
-        <div className="min-w-0 flex-1">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0 flex-1 basis-48">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium">{m.displayName}</span>
             {m.keyCount === 0 && (
@@ -61,18 +61,20 @@ function DecisionModelCard({
             {[m.platform, m.quotaLabel].filter(Boolean).join(' · ')}
           </div>
         </div>
-        <span className="text-xs text-muted-foreground tabular-nums">
-          {t('decision.thisMonth', { count: m.decisionsThisMonth })}
-        </span>
-        <button
-          type="button"
-          className="text-xs underline disabled:opacity-50"
-          onClick={() => test.mutate()}
-          disabled={!m.enabled || m.keyCount === 0 || test.isPending}
-        >
-          {test.isPending ? t('decision.tryRunning') : t('keys.testModel')}
-        </button>
-        <Switch checked={m.enabled} onCheckedChange={onToggle} disabled={pending} aria-label={m.displayName} />
+        <div className="flex items-center gap-2.5 shrink-0">
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {t('decision.thisMonth', { count: m.decisionsThisMonth })}
+          </span>
+          <button
+            type="button"
+            className="text-xs underline disabled:opacity-50"
+            onClick={() => test.mutate()}
+            disabled={!m.enabled || m.keyCount === 0 || test.isPending}
+          >
+            {test.isPending ? t('decision.tryRunning') : t('keys.testModel')}
+          </button>
+          <Switch checked={m.enabled} onCheckedChange={onToggle} disabled={pending} aria-label={m.displayName} />
+        </div>
       </div>
       {test.isSuccess && (
         <p role="status" className="mt-2 text-xs text-muted-foreground">

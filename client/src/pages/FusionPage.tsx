@@ -147,7 +147,7 @@ export default function FusionPage() {
               <h2 className="text-sm font-medium">{t('fusion.panelSource')}</h2>
               <p className="text-xs text-muted-foreground mt-0.5">{t('fusion.panelSourceHelp')}</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {(['auto', 'explicit'] as Mode[]).map(m => (
                 <button
                   key={m}
@@ -179,7 +179,7 @@ export default function FusionPage() {
               ) : (
                 <>
                   {/* Issue #872: search + provider filter over a long model list. */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <div className="relative flex-1">
                       <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
@@ -190,7 +190,7 @@ export default function FusionPage() {
                       />
                     </div>
                     <Select value={panelProvider} onValueChange={v => setPanelProvider(v ?? PROVIDER_ALL)}>
-                      <SelectTrigger className="w-44 shrink-0" aria-label={t('fusion.providerFilterLabel')}>
+                      <SelectTrigger className="w-full sm:w-44 shrink-0" aria-label={t('fusion.providerFilterLabel')}>
                         <SelectValue>
                           {(v: string) => v === PROVIDER_ALL
                             ? t('fusion.providerAll')

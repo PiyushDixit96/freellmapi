@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2, ShieldCheck } from 'lucide-react'
 import { API_BASE, apiFetch, setToken, UNAUTHORIZED_EVENT, type ApiError } from '@/lib/api'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogPopup, DialogTitle } from '@/components/ui/dialog'
 import { FieldError } from '@/components/ui/field-error'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
@@ -492,14 +493,11 @@ export function ChangeCredentialsModal({ mode, onClose }: ChangeCredentialsModal
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div className="w-full max-w-sm rounded-3xl border bg-card p-6 shadow-xl">
-        <h2 className="text-base font-medium mb-1">
+    <Dialog open={true} onOpenChange={open => { if (!open) onClose() }}>
+      <DialogPopup maxWidth="max-w-sm">
+        <DialogTitle className="text-base font-medium mb-1">
           {isPassword ? t('auth.changePassword') : t('auth.changeEmail')}
-        </h2>
+        </DialogTitle>
         <form onSubmit={submit} className="space-y-3 mt-4" noValidate>
           <div className="space-y-1.5">
             <Label className="text-xs" htmlFor="cred-current-password">{t('auth.currentPassword')}</Label>
@@ -547,8 +545,8 @@ export function ChangeCredentialsModal({ mode, onClose }: ChangeCredentialsModal
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogPopup>
+    </Dialog>
   )
 }
 
