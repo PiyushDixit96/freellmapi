@@ -177,7 +177,7 @@ export default function BenchmarksPage() {
         title="Model Benchmarks & Performance Leaderboard"
         description="Comprehensive quality scores, verified tool-calling accuracy, real-world TTFB, and live token throughput across all free model endpoints."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"

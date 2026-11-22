@@ -282,12 +282,12 @@ function Navbar() {
         <div
           // Physical pl: reserves macOS traffic lights only on macOS. On Windows and Linux,
           // standard window controls sit on the top-right, so no left padding is needed.
-          className={`mx-auto flex w-full max-w-7xl 2xl:max-w-[1600px] items-center px-4 sm:px-6 lg:px-8 ${isMacDesktop ? 'pl-20 sm:pl-20' : ''}`}
+          className={`mx-auto flex w-full max-w-[1600px] items-center px-4 sm:px-6 lg:px-8 2xl:px-12 ${isMacDesktop ? 'pl-20 sm:pl-20' : ''}`}
           style={isMacDesktop ? { minHeight: 52 } : undefined}
         >
           <Brand />
           <nav
-            className="ms-10 hidden items-center gap-6 md:flex"
+            className="ms-6 lg:ms-10 hidden items-center gap-4 lg:gap-6 lg:flex"
             style={isDesktopApp ? ({ WebkitAppRegion: 'no-drag' } as React.CSSProperties) : undefined}
           >
             {navItems.map((item) => {
@@ -321,7 +321,7 @@ function Navbar() {
             })}
           </nav>
           <div
-            className="ms-auto hidden items-center gap-1 md:flex"
+            className="ms-auto hidden items-center gap-1 lg:flex"
             style={isDesktopApp ? ({ WebkitAppRegion: 'no-drag' } as React.CSSProperties) : undefined}
           >
             <button
@@ -359,7 +359,7 @@ function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <div className="ms-auto md:hidden">
+          <div className="ms-auto lg:hidden">
             <DropdownMenu>
               <DropdownMenuTrigger
                 className={buttonVariants({ variant: 'ghost', size: 'icon' })}
@@ -464,7 +464,7 @@ function PageContainer({ children }: { children: ReactNode }) {
   const location = useLocation()
   const fullBleed = FULL_BLEED_ROUTES.has(location.pathname)
   return (
-    <main className={fullBleed ? 'flex min-h-0 flex-1 flex-col' : 'mx-auto w-full max-w-7xl 2xl:max-w-[1600px] px-4 sm:px-6 lg:px-8 py-5 sm:py-8'}>
+    <main className={fullBleed ? 'flex min-h-0 flex-1 flex-col' : 'mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 2xl:px-12 py-5 sm:py-8'}>
       {children}
     </main>
   )
