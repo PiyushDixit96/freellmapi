@@ -11,7 +11,7 @@ It is written for both **developers** and **AI assistants** (e.g. Antigravity, C
 ### Repository Roles
 * **`upstream`**: The original public repository (`https://github.com/tashfeenahmed/freellmapi.git`)
 * **`origin`**: Your personal GitHub fork (`https://github.com/PiyushDixit96/freellmapi.git`)
-* **Custom Feature Branch**: `feat/model-benchmarks` (contains the automated model benchmarking system, leaderboard, and single-model analytics view)
+* **Active Branch**: `main` (contains your production-ready features: model benchmarking system, leaderboard, autopilot micro-benchmarking, benchmark routing strategy, responsive layout, and optimized docker stack)
 
 ### Verify Remotes
 Run:
@@ -49,9 +49,9 @@ git stash
 git fetch upstream main
 ```
 
-### Step 3: Rebase Custom Branch on Upstream
+### Step 3: Rebase on Upstream
 ```bash
-git checkout feat/model-benchmarks
+git checkout main
 git rebase upstream/main
 ```
 
@@ -64,15 +64,7 @@ Always verify before pushing (see [Section 3](#3-verification-suite)).
 ### Step 6: Push to Your Fork
 Because the Git commit history is rebased on top of new upstream commits, use `--force-with-lease`:
 ```bash
-git push origin feat/model-benchmarks --force-with-lease
-```
-
-*(Optional)* If you keep your fork's `main` branch synced with this feature:
-```bash
-git checkout main
-git merge feat/model-benchmarks --ff-only
-git push origin main
-git checkout feat/model-benchmarks
+git push origin main --force-with-lease
 ```
 
 ---
