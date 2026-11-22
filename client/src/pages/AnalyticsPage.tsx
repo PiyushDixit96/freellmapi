@@ -997,7 +997,7 @@ export default function AnalyticsPage() {
                     {errors.slice(0, 20).map((e) => (
                       <TableRow key={e.id}>
                         <TableCell className="pl-4 text-xs">{e.endpoint ?? e.platform}</TableCell>
-                        <TableCell className="text-xs max-w-[200px]">
+                        <TableCell className="text-xs max-w-[200px] md:max-w-xs lg:max-w-md">
                           {e.error
                             ? <HoverTooltip text={e.error} side="top" className="block truncate">{e.error}</HoverTooltip>
                             : null}
@@ -1092,7 +1092,7 @@ export default function AnalyticsPage() {
                           <TableCell className="text-xs text-muted-foreground" title={r.clientUserAgent ?? undefined}>
                             {shortUserAgent(r.clientUserAgent)}
                           </TableCell>
-                          <TableCell className="text-xs max-w-[220px] truncate" title={r.requestedModel && r.requestedModel !== r.modelId ? t('analytics.requestedModelHint', { model: r.requestedModel }) : undefined}>
+                          <TableCell className="text-xs max-w-[220px] md:max-w-xs lg:max-w-sm xl:max-w-md truncate" title={r.requestedModel && r.requestedModel !== r.modelId ? t('analytics.requestedModelHint', { model: r.requestedModel }) : undefined}>
                             {r.modelId}
                             {r.requestedModel && r.requestedModel !== r.modelId ? ' *' : ''}
                           </TableCell>

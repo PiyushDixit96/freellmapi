@@ -432,7 +432,7 @@ export default function FallbackPage() {
           {/* Pills left, the quiet "More options" disclosure right. Everything
               secondary hangs off that toggle so the card reads as one choice. */}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="inline-flex flex-wrap items-center gap-1 rounded-xl border p-1">
+            <div className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-xl border p-1">
               {STRATEGIES.map(s => {
                 const pillClass = `px-3 py-1.5 text-xs rounded-lg transition-colors ${
                   s.key === strategy
@@ -610,7 +610,7 @@ export default function FallbackPage() {
           <>
             {/* Catalog toolbar: search + capability/context filters (#343) */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="relative w-full sm:max-w-xs">
+              <div className="relative w-full sm:max-w-xs md:max-w-sm">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <input
                   value={search}
@@ -644,7 +644,7 @@ export default function FallbackPage() {
                 >
                   {t('models.tools')}
                 </button>
-                <div className="inline-flex items-center gap-1 rounded-xl border p-1" role="group" aria-label={t('models.ctxTitle')}>
+                <div className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-xl border p-1 [&>button]:shrink-0" role="group" aria-label={t('models.ctxTitle')}>
                   {CTX_BUCKETS.map(b => (
                     <button
                       key={b.key}

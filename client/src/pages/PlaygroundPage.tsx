@@ -1070,7 +1070,7 @@ export default function PlaygroundPage() {
       <div className="flex min-w-0 flex-1 flex-col">
         <div ref={transcriptRef} className="min-h-0 flex-1 overflow-y-auto p-6">
           {/* The chat sits in a centred column; the composer below shares its width. */}
-          <div className="mx-auto h-full w-full max-w-3xl space-y-4">
+          <div className="mx-auto h-full w-full max-w-3xl xl:max-w-4xl 2xl:max-w-5xl space-y-4">
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full text-center">
               <div className="space-y-2 max-w-sm">
@@ -1224,7 +1224,7 @@ export default function PlaygroundPage() {
         </div>
 
         <div
-          className={`mx-auto w-full max-w-3xl px-6 pb-4 pt-1 transition-colors ${dragging ? 'rounded-2xl bg-primary/5 ring-1 ring-inset ring-primary/40' : ''}`}
+          className={`mx-auto w-full max-w-3xl xl:max-w-4xl 2xl:max-w-5xl px-4 sm:px-6 pb-4 pt-1 transition-colors ${dragging ? 'rounded-2xl bg-primary/5 ring-1 ring-inset ring-primary/40' : ''}`}
           onDragOver={e => { e.preventDefault(); setDragging(true) }}
           onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false) }}
           onDrop={e => {

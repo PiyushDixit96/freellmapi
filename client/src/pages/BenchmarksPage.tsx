@@ -285,9 +285,9 @@ export default function BenchmarksPage() {
       </div>
 
       {/* Filter & Controls Bar */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between rounded-2xl border bg-card p-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between rounded-2xl border bg-card p-3 sm:p-4">
         {/* Modality Tabs */}
-        <div className="flex items-center gap-1 rounded-xl bg-muted/60 p-1">
+        <div className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-xl bg-muted/60 p-1 [&>button]:shrink-0">
           <button
             onClick={() => setModalityTab('all')}
             className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
@@ -315,8 +315,8 @@ export default function BenchmarksPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative w-48 sm:w-64">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          <div className="relative flex-1 sm:flex-initial w-full sm:w-64 min-w-[180px]">
             <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search model or provider..."
@@ -327,7 +327,7 @@ export default function BenchmarksPage() {
           </div>
 
           <Select value={tierFilter} onValueChange={(val) => setTierFilter(val ?? 'all')}>
-            <SelectTrigger className="h-8 w-32 text-xs">
+            <SelectTrigger className="h-8 flex-1 sm:flex-initial sm:w-32 text-xs">
               <SelectValue placeholder="All Tiers" />
             </SelectTrigger>
             <SelectContent>
@@ -340,7 +340,7 @@ export default function BenchmarksPage() {
           </Select>
 
           <Select value={sortBy} onValueChange={(val) => setSortBy((val as any) ?? 'quality')}>
-            <SelectTrigger className="h-8 w-36 text-xs">
+            <SelectTrigger className="h-8 flex-1 sm:flex-initial sm:w-36 text-xs">
               <SelectValue placeholder="Sort By" />
             </SelectTrigger>
             <SelectContent>
@@ -363,7 +363,7 @@ export default function BenchmarksPage() {
       ) : (
         <div className="overflow-hidden rounded-2xl border bg-card shadow-xs">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full min-w-[800px] text-left text-xs">
               <thead>
                 <tr className="border-b bg-muted/30 font-medium text-muted-foreground">
                   <th className="px-4 py-3">Rank</th>
@@ -397,7 +397,7 @@ export default function BenchmarksPage() {
                           <span title="Supports Tools"><Wrench className="size-3 text-emerald-500" /></span>
                         )}
                       </Link>
-                      <span className="font-mono text-[10px] text-muted-foreground block truncate max-w-xs">
+                      <span className="font-mono text-[10px] text-muted-foreground block truncate max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl">
                         {m.modelId}
                       </span>
                     </td>

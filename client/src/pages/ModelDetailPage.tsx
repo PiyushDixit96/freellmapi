@@ -294,7 +294,7 @@ export default function ModelDetailPage() {
 
             {/* Per-provider stats (same columns as the Models table) */}
             <div className="rounded-2xl border overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[640px] text-sm">
                 <ModelTableHead />
                 <tbody>
                   {members.map((m, i) => (
@@ -477,13 +477,13 @@ export default function ModelDetailPage() {
               <p className="mt-0.5 mb-3 text-xs text-muted-foreground">{t('models.providerIdsHint')}</p>
               <div className="space-y-1.5">
                 {members.map(m => (
-                  <div key={m.modelDbId} className="flex items-center gap-2 text-xs">
-                    <span className="w-28 max-w-[16rem] shrink-0 basis-auto truncate text-muted-foreground sm:w-auto sm:min-w-28" title={memberEndpointTitle(m, siblings)}>
+                  <div key={m.modelDbId} className="flex flex-wrap sm:flex-nowrap items-center gap-2 text-xs">
+                    <span className="w-auto sm:w-28 sm:max-w-[16rem] shrink-0 basis-auto truncate text-muted-foreground" title={memberEndpointTitle(m, siblings)}>
                       {memberProviderLabel(m, siblings)}
                     </span>
                     <code className="min-w-0 flex-1 truncate font-mono text-[11px]">{providerPinId(m, siblings)}</code>
                     <Tooltip text={t('models.copyModelName')}>
-                      <CopyButton text={providerPinId(m, siblings)} label={t('models.copyModelName')} className="border-0 bg-transparent" />
+                      <CopyButton text={providerPinId(m, siblings)} label={t('models.copyModelName')} className="border-0 bg-transparent shrink-0" />
                     </Tooltip>
                   </div>
                 ))}
