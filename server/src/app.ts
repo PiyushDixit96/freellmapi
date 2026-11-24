@@ -19,6 +19,7 @@ import { mediaRouter } from './routes/media.js';
 import { searchRouter } from './routes/search.js';
 import { decisionsRouter } from './routes/decisions.js';
 import { analyticsRouter } from './routes/analytics.js';
+import { benchmarksRouter } from './routes/benchmarks.js';
 import { healthRouter } from './routes/health.js';
 import { freeTierRouter } from './routes/free-tier.js';
 import { settingsRouter } from './routes/settings.js';
@@ -310,6 +311,7 @@ export function createApp(config?: Config) {
   app.use('/api/search', requireAuth, searchRouter);
   app.use('/api/decisions', requireAuth, decisionsRouter);
   app.use('/api/analytics', requireAuth, analyticsRouter);
+  app.use('/api/benchmarks', requireAuth, benchmarksRouter);
   app.use('/api/health', requireAuth, healthRouter);
   app.use('/api/free-tier', requireAuth, freeTierRouter);
   app.use('/api/settings', requireAuth, settingsRouter);

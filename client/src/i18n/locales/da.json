@@ -16,7 +16,8 @@
     "modelsMenu": "Gennemse modeltyper",
     "agents": "Agenter",
     "logs": "Log",
-    "analyticsMenu": "Analysesider"
+    "analyticsMenu": "Analysesider",
+    "benchmarks": "Benchmarks"
   },
   "auth": {
     "createYourAccount": "Opret din konto",

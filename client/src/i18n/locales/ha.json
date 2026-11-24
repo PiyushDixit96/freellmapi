@@ -16,7 +16,8 @@
     "modelsMenu": "Bincika nau'ikan samfuri",
     "agents": "Wakilai",
     "logs": "Logs",
-    "analyticsMenu": "Shafukan bincike"
+    "analyticsMenu": "Shafukan bincike",
+    "benchmarks": "Benchmarks"
   },
   "auth": {
     "createYourAccount": "Ƙirƙiri asusun ku",

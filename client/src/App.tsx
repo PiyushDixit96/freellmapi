@@ -29,7 +29,6 @@ import { I18nProvider, useI18n } from '@/i18n'
 import { apiFetch, logout } from '@/lib/api'
 import { toast } from '@/lib/toast'
 import { ThemeProvider } from '@/theme'
-
 // Route pages are code-split: each loads on first navigation instead of
 // shipping in the entry chunk. Shell, navbar and auth gate stay eager.
 const KeysPage = lazy(() => import('@/pages/KeysPage'))
@@ -46,6 +45,7 @@ const DecisionPage = lazy(() => import('@/pages/DecisionPage'))
 const MediaDetailPage = lazy(() => import('@/pages/MediaDetailPage'))
 const EmbeddingDetailPage = lazy(() => import('@/pages/EmbeddingDetailPage'))
 const AnalyticsPage = lazy(() => import('@/pages/AnalyticsPage'))
+const BenchmarksPage = lazy(() => import('@/pages/BenchmarksPage'))
 const LogsPage = lazy(() => import('@/pages/LogsPage'))
 const PremiumPage = lazy(() => import('@/pages/PremiumPage'))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
@@ -99,6 +99,7 @@ const modelItems = [
 // deliberately kept out of navItems so the top bar does not grow a seventh entry.
 const analyticsItems = [
   { to: '/analytics', labelKey: 'nav.analytics' },
+  { to: '/benchmarks', labelKey: 'nav.benchmarks' },
   { to: '/logs', labelKey: 'nav.logs' },
 ]
 
@@ -522,6 +523,7 @@ function App() {
                       <Route path="/agents" element={<AgentsPage />} />
                       <Route path="/fallback" element={<Navigate to="/models/chat" replace />} />
                       <Route path="/analytics" element={<AnalyticsPage />} />
+                      <Route path="/benchmarks" element={<BenchmarksPage />} />
                       <Route path="/logs" element={<LogsPage />} />
                       <Route path="/premium" element={<PremiumPage />} />
                       <Route path="/test" element={<Navigate to="/playground" replace />} />

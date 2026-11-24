@@ -16,7 +16,8 @@
     "modelsMenu": "Przeglądaj typy modeli",
     "agents": "Agenci",
     "logs": "Logi",
-    "analyticsMenu": "Strony analityki"
+    "analyticsMenu": "Strony analityki",
+    "benchmarks": "Benchmarks"
   },
   "auth": {
     "createYourAccount": "Utwórz swoje konto",

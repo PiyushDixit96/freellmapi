@@ -16,7 +16,8 @@
     "modelsMenu": "تصفح أنواع النماذج",
     "agents": "الوكلاء",
     "logs": "السجلات",
-    "analyticsMenu": "صفحات التحليلات"
+    "analyticsMenu": "صفحات التحليلات",
+    "benchmarks": "Benchmarks"
   },
   "auth": {
     "createYourAccount": "أنشئ حسابك",

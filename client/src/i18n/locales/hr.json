@@ -16,7 +16,8 @@
     "modelsMenu": "Pregledajte vrste modela",
     "agents": "Agenti",
     "logs": "Logovi",
-    "analyticsMenu": "Stranice analitike"
+    "analyticsMenu": "Stranice analitike",
+    "benchmarks": "Benchmarks"
   },
   "auth": {
     "createYourAccount": "Kreirajte svoj račun",

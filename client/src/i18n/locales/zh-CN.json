@@ -16,7 +16,8 @@
     "modelsMenu": "浏览模型类型",
     "agents": "智能体",
     "logs": "日志",
-    "analyticsMenu": "分析页面"
+    "analyticsMenu": "分析页面",
+    "benchmarks": "基准测试"
   },
   "auth": {
     "createYourAccount": "创建账号",

@@ -16,7 +16,8 @@
     "modelsMenu": "Прегледајте типове модела",
     "agents": "Агенти",
     "logs": "Логови",
-    "analyticsMenu": "Странице аналитике"
+    "analyticsMenu": "Странице аналитике",
+    "benchmarks": "Benchmarks"
   },
   "auth": {
     "createYourAccount": "Креирајте свој налог",

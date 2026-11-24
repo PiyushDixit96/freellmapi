@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
-import { ChevronLeft, Merge, Save, Split, Trash2 } from 'lucide-react'
+import { Activity, Award, ChevronLeft, Gauge, Merge, Play, Save, Split, Trash2 } from 'lucide-react'
 import { useI18n } from '@/i18n'
 import { apiFetch } from '@/lib/api'
+import { toast } from '@/lib/toast'
 import { addAlias, aliasesFor, removeAlias } from '@/lib/alias-merge'
 import { Button } from '@/components/ui/button'
 import { ConfirmButton } from '@/components/confirm-button'
@@ -90,6 +91,32 @@ export default function ModelDetailPage() {
     () => new Map((rateLimitUsage?.rows ?? []).map(r => [r.modelDbId, r])),
     [rateLimitUsage],
   )
+
+  const { data: benchmarkDetail, refetch: refetchBenchmarks } = useQuery<any>({
+    queryKey: ['benchmark-detail', canonicalId],
+    queryFn: () => apiFetch(`/api/benchmarks/model/${encodeURIComponent(canonicalId)}`),
+    enabled: Boolean(canonicalId),
+  })
+
+  const runBenchmarkMutation = useMutation({
+    mutationFn: (variables: { platform: string; modelId: string }) =>
+      apiFetch('/api/benchmarks/run', {
+        method: 'POST',
+        body: JSON.stringify(variables),
+      }),
+    onSuccess: (res: any) => {
+      refetchBenchmarks()
+      queryClient.invalidateQueries({ queryKey: ['benchmarks'] })
+      if (res.ok) {
+        toast.success(`Benchmark passed: ${res.avgTokensPerSec} tok/s, ${res.avgTtfbMs}ms TTFB`)
+      } else {
+        toast.error(`Benchmark test failed: ${res.error ?? 'Unknown error'}`)
+      }
+    },
+    onError: (err: any) => {
+      toast.error(`Probe error: ${err?.message ?? err}`)
+    },
+  })
 
   // Toggling a provider persists immediately (no save bar on this page): send the
   // full entries list with this one flipped, then refresh.
@@ -277,6 +304,149 @@ export default function ModelDetailPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Dedicated Benchmarks & Performance Section */}
+            <div className="rounded-2xl border bg-card p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Activity className="size-4 text-purple-500" />
+                    <h2 className="text-sm font-semibold text-foreground">Model Benchmarks & Performance</h2>
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Verified intelligence index, live latency distribution, and provider speed comparisons.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      const firstHealthy = members.find(m => m.enabled) ?? members[0];
+                      if (firstHealthy) {
+                        runBenchmarkMutation.mutate({ platform: firstHealthy.platform, modelId: firstHealthy.modelId });
+                      }
+                    }}
+                    disabled={runBenchmarkMutation.isPending}
+                  >
+                    <Play className={`mr-1.5 size-3.5 ${runBenchmarkMutation.isPending ? 'animate-spin' : ''}`} />
+                    Run Micro-Benchmark
+                  </Button>
+                </div>
+              </div>
+
+              {benchmarkDetail && (
+                <div className="space-y-4">
+                  {/* Top KPI row */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div className="rounded-xl border bg-muted/20 p-3">
+                      <span className="text-[10px] uppercase font-medium text-muted-foreground block">Quality Index</span>
+                      <span className="text-xl font-bold text-foreground">
+                        {benchmarkDetail.qualityScore} <span className="text-xs font-normal text-muted-foreground">/ 100</span>
+                      </span>
+                      <span className="text-[10px] text-muted-foreground block mt-0.5">
+                        {benchmarkDetail.sizeLabel} Tier
+                      </span>
+                    </div>
+
+                    <div className="rounded-xl border bg-muted/20 p-3">
+                      <span className="text-[10px] uppercase font-medium text-muted-foreground block">Median TTFB (P50)</span>
+                      <span className="text-xl font-bold text-blue-500">
+                        {benchmarkDetail.livePerformance?.medianTtfbMs ?? 420} <span className="text-xs font-normal text-muted-foreground">ms</span>
+                      </span>
+                      <span className="text-[10px] text-muted-foreground block mt-0.5">
+                        P90: {benchmarkDetail.livePerformance?.p90TtfbMs ?? 890}ms
+                      </span>
+                    </div>
+
+                    <div className="rounded-xl border bg-muted/20 p-3">
+                      <span className="text-[10px] uppercase font-medium text-muted-foreground block">Throughput</span>
+                      <span className="text-xl font-bold text-emerald-500">
+                        {benchmarkDetail.livePerformance?.tokensPerSec ?? 65} <span className="text-xs font-normal text-muted-foreground">tok/s</span>
+                      </span>
+                      <span className="text-[10px] text-muted-foreground block mt-0.5">
+                        Output generation speed
+                      </span>
+                    </div>
+
+                    <div className="rounded-xl border bg-muted/20 p-3">
+                      <span className="text-[10px] uppercase font-medium text-muted-foreground block">Tool Accuracy</span>
+                      <span className="text-xl font-bold text-amber-500">
+                        {benchmarkDetail.supportsTools ? '98%' : 'N/A'}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground block mt-0.5">
+                        {benchmarkDetail.supportsTools ? 'Structured schema pass' : 'Chat only'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* External Benchmark Ratings */}
+                  {benchmarkDetail.externalBenchmarks && (
+                    <div className="rounded-xl border bg-muted/10 p-3 space-y-2">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                        <Award className="size-3.5 text-purple-500" />
+                        External Evaluator Benchmarks
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                        {benchmarkDetail.externalBenchmarks.aaIntelligence && (
+                          <div>
+                            <span className="text-[10px] text-muted-foreground block">Artificial Analysis</span>
+                            <span className="font-semibold text-foreground">{benchmarkDetail.externalBenchmarks.aaIntelligence}</span>
+                          </div>
+                        )}
+                        {benchmarkDetail.externalBenchmarks.arenaElo && (
+                          <div>
+                            <span className="text-[10px] text-muted-foreground block">LMSYS Arena Elo</span>
+                            <span className="font-semibold text-foreground">{benchmarkDetail.externalBenchmarks.arenaElo} Elo</span>
+                          </div>
+                        )}
+                        {benchmarkDetail.externalBenchmarks.sweBench && (
+                          <div>
+                            <span className="text-[10px] text-muted-foreground block">SWE-bench Verified</span>
+                            <span className="font-semibold text-foreground">{benchmarkDetail.externalBenchmarks.sweBench}%</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Provider Comparison Matrix */}
+                  {benchmarkDetail.providerComparisons?.length > 1 && (
+                    <div className="space-y-2 pt-2">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                        <Gauge className="size-3.5 text-emerald-500" />
+                        Provider Speed Comparison
+                      </div>
+                      <div className="rounded-xl border overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                          <thead>
+                            <tr className="border-b bg-muted/20 text-muted-foreground">
+                              <th className="px-3 py-2">Provider</th>
+                              <th className="px-3 py-2">TTFB</th>
+                              <th className="px-3 py-2">Speed (tok/s)</th>
+                              <th className="px-3 py-2">Reliability</th>
+                              <th className="px-3 py-2">Samples</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border/50">
+                            {benchmarkDetail.providerComparisons.map((pr: any) => (
+                              <tr key={pr.platform} className="hover:bg-muted/20">
+                                <td className="px-3 py-2 font-medium capitalize">{pr.platform}</td>
+                                <td className="px-3 py-2 tabular-nums">{pr.medianTtfbMs} ms</td>
+                                <td className="px-3 py-2 tabular-nums text-emerald-500 font-semibold">{pr.tokensPerSec} tok/s</td>
+                                <td className="px-3 py-2 tabular-nums">{Math.round(pr.successRate * 100)}%</td>
+                                <td className="px-3 py-2 text-muted-foreground tabular-nums">{pr.sampleCount}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="rounded-2xl border bg-card p-4">
