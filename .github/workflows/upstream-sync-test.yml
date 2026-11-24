@@ -1,0 +1,135 @@
+name: Upstream Sync & Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: 'Branch to sync and test against upstream'
+        required: true
+        default: 'main-copy'
+        type: string
+      upstream_repo:
+        description: 'Upstream source repository URL'
+        required: true
+        default: 'https://github.com/tashfeenahmed/freellmapi.git'
+        type: string
+      upstream_branch:
+        description: 'Upstream branch'
+        required: true
+        default: 'main'
+        type: string
+      push_on_success:
+        description: 'Push synced changes to target branch if all tests pass'
+        required: true
+        default: false
+        type: boolean
+  schedule:
+    # Run daily at 02:00 UTC to check for upstream changes
+    - cron: '0 2 * * *'
+
+permissions:
+  contents: write
+
+jobs:
+  sync-and-test:
+    name: Sync from upstream & run test suite
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_branch || 'main-copy' }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream commits
+        id: fetch_upstream
+        env:
+          UPSTREAM_REPO: ${{ inputs.upstream_repo || 'https://github.com/tashfeenahmed/freellmapi.git' }}
+          UPSTREAM_BRANCH: ${{ inputs.upstream_branch || 'main' }}
+        run: |
+          git remote add upstream "$UPSTREAM_REPO" || git remote set-url upstream "$UPSTREAM_REPO"
+          git fetch upstream "$UPSTREAM_BRANCH"
+          
+          NEW_COMMITS=$(git log HEAD..upstream/$UPSTREAM_BRANCH --oneline || true)
+          if [ -z "$NEW_COMMITS" ]; then
+            echo "has_commits=false" >> $GITHUB_OUTPUT
+            echo "Upstream is already up to date with target branch."
+          else
+            echo "has_commits=true" >> $GITHUB_OUTPUT
+            echo "Found new commits in upstream:"
+            echo "$NEW_COMMITS"
+          fi
+
+      - name: Attempt merge with upstream
+        if: steps.fetch_upstream.outputs.has_commits == 'true'
+        id: merge_step
+        env:
+          UPSTREAM_BRANCH: ${{ inputs.upstream_branch || 'main' }}
+        run: |
+          echo "Attempting merge with upstream/$UPSTREAM_BRANCH..."
+          if git merge upstream/$UPSTREAM_BRANCH --no-commit; then
+            echo "merge_status=clean" >> $GITHUB_OUTPUT
+            echo "Clean auto-merge succeeded."
+            git commit -m "chore(sync): automated merge from upstream/$UPSTREAM_BRANCH"
+          else
+            echo "merge_status=conflict" >> $GITHUB_OUTPUT
+            echo "Merge conflicts detected in:"
+            git diff --name-only --diff-filter=U
+            git merge --abort
+            echo "::error::Merge conflicts detected with upstream. Manual resolution required."
+            exit 1
+          fi
+
+      - name: Setup Node.js 22 LTS
+        if: steps.fetch_upstream.outputs.has_commits == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        if: steps.fetch_upstream.outputs.has_commits == 'true'
+        run: npm ci
+
+      - name: Check database migrations
+        if: steps.fetch_upstream.outputs.has_commits == 'true'
+        run: npm run test:migrations
+
+      - name: Check localization (i18n)
+        if: steps.fetch_upstream.outputs.has_commits == 'true'
+        run: npm run check:i18n -w client
+
+      - name: Run client tests
+        if: steps.fetch_upstream.outputs.has_commits == 'true'
+        run: npm test -w client
+
+      - name: Run server tests
+        if: steps.fetch_upstream.outputs.has_commits == 'true'
+        run: npm test -w server
+
+      - name: Build all packages
+        if: steps.fetch_upstream.outputs.has_commits == 'true'
+        run: npm run build
+
+      - name: Push to target branch
+        if: steps.fetch_upstream.outputs.has_commits == 'true' && (inputs.push_on_success == true || github.event_name == 'schedule')
+        env:
+          TARGET_BRANCH: ${{ inputs.target_branch || 'main-copy' }}
+        run: |
+          echo "Pushing verified changes to origin/$TARGET_BRANCH..."
+          git push origin HEAD:$TARGET_BRANCH
+
+      - name: Workflow summary
+        if: always()
+        run: |
+          echo "### Upstream Sync & Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target branch**: \`${{ inputs.target_branch || 'main-copy' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Upstream repo**: \`${{ inputs.upstream_repo || 'https://github.com/tashfeenahmed/freellmapi.git' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Has new commits**: \`${{ steps.fetch_upstream.outputs.has_commits }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Merge status**: \`${{ steps.merge_step.outputs.merge_status || 'skipped / none' }}\`" >> $GITHUB_STEP_SUMMARY
