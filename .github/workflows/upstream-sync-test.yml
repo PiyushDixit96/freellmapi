@@ -8,6 +8,14 @@ on:
         required: true
         default: 'main-copy'
         type: string
+      sync_strategy:
+        description: 'Sync strategy: rebase (linear history) or merge'
+        required: true
+        default: 'rebase'
+        type: choice
+        options:
+          - rebase
+          - merge
       upstream_repo:
         description: 'Upstream source repository URL'
         required: true
@@ -21,10 +29,10 @@ on:
       push_on_success:
         description: 'Push synced changes to target branch if all tests pass'
         required: true
-        default: false
+        default: true
         type: boolean
   schedule:
-    # Run daily at 02:00 UTC to check for upstream changes
+    # Run daily at 02:00 UTC to auto rebase/sync main-copy against upstream
     - cron: '0 2 * * *'
 
 permissions:
@@ -66,24 +74,39 @@ jobs:
             echo "$NEW_COMMITS"
           fi
 
-      - name: Attempt merge with upstream
+      - name: Attempt sync (rebase or merge)
         if: steps.fetch_upstream.outputs.has_commits == 'true'
-        id: merge_step
+        id: sync_step
         env:
           UPSTREAM_BRANCH: ${{ inputs.upstream_branch || 'main' }}
+          STRATEGY: ${{ inputs.sync_strategy || 'rebase' }}
         run: |
-          echo "Attempting merge with upstream/$UPSTREAM_BRANCH..."
-          if git merge upstream/$UPSTREAM_BRANCH --no-commit; then
-            echo "merge_status=clean" >> $GITHUB_OUTPUT
-            echo "Clean auto-merge succeeded."
-            git commit -m "chore(sync): automated merge from upstream/$UPSTREAM_BRANCH"
+          echo "Executing sync strategy: $STRATEGY with upstream/$UPSTREAM_BRANCH..."
+          if [ "$STRATEGY" = "rebase" ]; then
+            if git rebase upstream/$UPSTREAM_BRANCH; then
+              echo "sync_status=clean-rebase" >> $GITHUB_OUTPUT
+              echo "Clean rebase succeeded."
+            else
+              echo "sync_status=conflict-rebase" >> $GITHUB_OUTPUT
+              echo "Rebase conflicts detected in:"
+              git diff --name-only --diff-filter=U
+              git rebase --abort || true
+              echo "::error::Rebase conflicts detected with upstream. Manual resolution required."
+              exit 1
+            fi
           else
-            echo "merge_status=conflict" >> $GITHUB_OUTPUT
-            echo "Merge conflicts detected in:"
-            git diff --name-only --diff-filter=U
-            git merge --abort
-            echo "::error::Merge conflicts detected with upstream. Manual resolution required."
-            exit 1
+            if git merge upstream/$UPSTREAM_BRANCH --no-commit; then
+              echo "sync_status=clean-merge" >> $GITHUB_OUTPUT
+              echo "Clean auto-merge succeeded."
+              git commit -m "chore(sync): automated merge from upstream/$UPSTREAM_BRANCH"
+            else
+              echo "sync_status=conflict-merge" >> $GITHUB_OUTPUT
+              echo "Merge conflicts detected in:"
+              git diff --name-only --diff-filter=U
+              git merge --abort || true
+              echo "::error::Merge conflicts detected with upstream. Manual resolution required."
+              exit 1
+            fi
           fi
 
       - name: Setup Node.js 22 LTS
@@ -118,18 +141,24 @@ jobs:
         run: npm run build
 
       - name: Push to target branch
-        if: steps.fetch_upstream.outputs.has_commits == 'true' && (inputs.push_on_success == true || github.event_name == 'schedule')
+        if: steps.fetch_upstream.outputs.has_commits == 'true' && (inputs.push_on_success != false || github.event_name == 'schedule')
         env:
           TARGET_BRANCH: ${{ inputs.target_branch || 'main-copy' }}
+          STRATEGY: ${{ inputs.sync_strategy || 'rebase' }}
         run: |
           echo "Pushing verified changes to origin/$TARGET_BRANCH..."
-          git push origin HEAD:$TARGET_BRANCH
+          if [ "$STRATEGY" = "rebase" ]; then
+            git push origin HEAD:$TARGET_BRANCH --force-with-lease
+          else
+            git push origin HEAD:$TARGET_BRANCH
+          fi
 
       - name: Workflow summary
         if: always()
         run: |
           echo "### Upstream Sync & Test Summary" >> $GITHUB_STEP_SUMMARY
           echo "- **Target branch**: \`${{ inputs.target_branch || 'main-copy' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Sync strategy**: \`${{ inputs.sync_strategy || 'rebase' }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Upstream repo**: \`${{ inputs.upstream_repo || 'https://github.com/tashfeenahmed/freellmapi.git' }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Has new commits**: \`${{ steps.fetch_upstream.outputs.has_commits }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Merge status**: \`${{ steps.merge_step.outputs.merge_status || 'skipped / none' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Sync status**: \`${{ steps.sync_step.outputs.sync_status || 'skipped / up to date' }}\`" >> $GITHUB_STEP_SUMMARY
