@@ -19,7 +19,7 @@ export function EmptyState({
 }) {
   return (
     <div className={cn('rounded-3xl border border-dashed p-8 text-center', className)}>
-      {Icon && <Icon className="mx-auto mb-3 size-6 text-muted-foreground/60" />}
+      {Icon && <Icon className="mx-auto mb-3 size-7 text-muted-foreground/80" />}
       <p className="text-sm font-medium">{title}</p>
       {description && <div className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">{description}</div>}
       {action && <div className="mt-4 flex flex-wrap items-center justify-center gap-2">{action}</div>}

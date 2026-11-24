@@ -243,10 +243,10 @@ export function CustomProviderSection({ onAdded }: { onAdded?: () => void } = {}
 
   const form = (
       <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 w-full sm:w-auto">
           <Label className="text-xs">{t('keys.customType')}</Label>
           <Select value={customType} onValueChange={(v) => setCustomType(v as typeof customType)}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-full sm:w-[160px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -295,29 +295,29 @@ export function CustomProviderSection({ onAdded }: { onAdded?: () => void } = {}
             onChange={e => setModel(e.target.value)}
             placeholder={modelPlaceholder}
             rows={customType === 'chat' ? 2 : 1}
-            className="w-[200px] font-mono text-xs"
+            className="w-full sm:w-[200px] font-mono text-xs"
             aria-invalid={attempted && !!modelError}
           />
           {attempted && <FieldError error={modelError} />}
         </div>
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 w-full sm:w-auto">
           <Label className="text-xs">{t('keys.customDisplayName')}</Label>
           <Input
             value={displayName}
             onChange={e => setDisplayName(e.target.value)}
             placeholder={multiple ? t('keys.customDisplayNamePerModel') : t('keys.customDisplayNameOptional')}
             disabled={multiple}
-            className="w-[150px]"
+            className="w-full sm:w-[150px]"
           />
         </div>
         {customType === 'embedding' && (
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 w-full sm:w-auto">
             <Label className="text-xs">{t('keys.customFamily')}</Label>
             <Input
               value={family}
               onChange={e => setFamily(e.target.value)}
               placeholder={embeddingsData?.families?.[0]?.family ?? t('keys.customFamilyPlaceholder')}
-              className="w-[190px] font-mono text-xs"
+              className="w-full sm:w-[190px] font-mono text-xs"
             />
           </div>
         )}
@@ -326,13 +326,13 @@ export function CustomProviderSection({ onAdded }: { onAdded?: () => void } = {}
           // from the symmetric ones by trying: an endpoint that refuses a
           // request without an input_type is the tell. The default is "not
           // specified", which leaves the model's stored choice alone.
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 w-full sm:w-auto">
             <Label className="text-xs">{t('keys.customEmbeddingInputType')}</Label>
             <Select
               value={embeddingInputType}
               onValueChange={(v) => setEmbeddingInputType(v ?? EMBEDDING_INPUT_TYPE_UNSET)}
             >
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-full sm:w-[150px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -419,25 +419,25 @@ export function CustomProviderSection({ onAdded }: { onAdded?: () => void } = {}
             value={apiKey}
             onChange={e => setApiKey(e.target.value)}
             placeholder={t('keys.customDisplayNameOptional')}
-            className="w-[150px] font-mono text-xs"
+            className="w-full sm:w-[150px] font-mono text-xs"
           />
         </div>
         {customType === 'chat' && (
-          <GroupLabelField value={groupLabel} onChange={setGroupLabel} className="w-[150px]" showHint={false} />
+          <GroupLabelField value={groupLabel} onChange={setGroupLabel} className="w-full sm:w-[150px]" showHint={false} />
         )}
         {customType === 'chat' && (
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 w-full sm:w-auto">
             <Label className="text-xs" htmlFor="custom-monthly-token-budget">{t('models.monthlyTokenBudget')}</Label>
             <Input
               id="custom-monthly-token-budget"
               value={monthlyTokenBudget}
               onChange={e => setMonthlyTokenBudget(e.target.value)}
               placeholder="~30M"
-              className="w-[140px] font-mono text-xs"
+              className="w-full sm:w-[140px] font-mono text-xs"
             />
           </div>
         )}
-        <Button type="submit" size="sm" disabled={addCustom.isPending}>
+        <Button type="submit" size="sm" className="w-full sm:w-auto" disabled={addCustom.isPending}>
           {addCustom.isPending ? t('keys.addingCustom') : addLabel}
         </Button>
       </form>

@@ -62,7 +62,7 @@ function WebAgentsPage() {
         title={t('agents.title')}
         description={t('agents.description')}
         actions={
-          <Button variant="outline" size="sm" onClick={() => setRevealKey(value => !value)}>
+          <Button variant="outline" size="sm" className="active:scale-95 transition-all" onClick={() => setRevealKey(value => !value)}>
             {revealKey ? t('common.hide') : t('common.show')} {t('agents.apiKey')}
           </Button>
         }
@@ -103,7 +103,7 @@ function WebAgentsPage() {
           const descriptionKey = `agents.descriptions.${tool.id}`
           const description = t(descriptionKey)
           return (
-            <Card key={tool.id} size="sm">
+            <Card key={tool.id} size="sm" className="transition-all duration-200 hover:border-foreground/20 hover:shadow-xs">
               <CardHeader>
                 <AgentIcon id={tool.id} name={tool.name} className="mb-1.5" />
                 <CardTitle>{tool.name}</CardTitle>
@@ -159,7 +159,7 @@ function WebAgentsPage() {
                   href={tool.docsUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-auto inline-flex w-fit items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  className="mt-auto inline-flex w-fit items-center gap-1 rounded px-1 -mx-1 py-0.5 text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
                 >
                   {t('agents.documentation')} <ExternalLink className="size-3" />
                 </a>

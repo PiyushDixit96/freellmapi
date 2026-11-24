@@ -338,12 +338,12 @@ export default function EmbeddingsPage() {
               <section key={f.family} className={`rounded-3xl border bg-card p-5 ${noKeys ? 'opacity-60' : ''}`}>
                 <div className="flex items-baseline justify-between gap-4 mb-3 flex-wrap">
                   <div className="flex items-baseline gap-2.5 min-w-0">
-                    <Link to={`/models/embeddings/${encodeURIComponent(f.family)}`} className="text-sm font-medium font-mono truncate hover:underline">{f.family}</Link>
+                    <Link to={`/models/embeddings/${encodeURIComponent(f.family)}`} className="rounded px-1 -mx-1 text-sm font-medium font-mono truncate hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{f.family}</Link>
                     <span className="text-[10px] rounded-full px-1.5 py-0.5 bg-muted text-muted-foreground tabular-nums">
                       {f.dimensions}d
                     </span>
                     {f.maxInputTokens && (
-                      <span className="text-[11px] text-muted-foreground/70 tabular-nums">
+                      <span className="text-[11px] text-muted-foreground tabular-nums">
                         {t('embeddings.tokMax', { tokens: formatTokens(f.maxInputTokens) })}
                       </span>
                     )}
@@ -353,8 +353,9 @@ export default function EmbeddingsPage() {
                       </span>
                     ) : (
                       <button
+                        type="button"
                         onClick={() => setLocalDefault(f.family)}
-                        className="text-[11px] text-muted-foreground hover:text-foreground underline decoration-dotted underline-offset-2 transition-colors"
+                        className="rounded px-1 -mx-1 text-[11px] text-muted-foreground hover:text-foreground underline decoration-dotted underline-offset-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         {t('embeddings.makeDefault')}
                       </button>

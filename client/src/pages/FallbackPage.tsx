@@ -685,7 +685,7 @@ export default function FallbackPage() {
             {filtersActive && (
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>{t('models.showingCount', { shown: visibleGroups.length, total: orderedGroups.length })}</span>
-                <button onClick={clearFilters} className="underline hover:text-foreground">{t('models.clearFilters')}</button>
+                <button type="button" onClick={clearFilters} className="rounded px-1 text-xs underline hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors">{t('models.clearFilters')}</button>
               </div>
             )}
 

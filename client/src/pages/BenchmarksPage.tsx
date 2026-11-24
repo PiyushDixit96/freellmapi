@@ -289,24 +289,27 @@ export default function BenchmarksPage() {
         {/* Modality Tabs */}
         <div className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-xl bg-muted/60 p-1 [&>button]:shrink-0">
           <button
+            type="button"
             onClick={() => setModalityTab('all')}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               modalityTab === 'all' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             All Modalities
           </button>
           <button
+            type="button"
             onClick={() => setModalityTab('tools')}
-            className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               modalityTab === 'tools' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             <Wrench className="size-3" /> Tool Callers
           </button>
           <button
+            type="button"
             onClick={() => setModalityTab('vision')}
-            className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               modalityTab === 'vision' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -387,7 +390,7 @@ export default function BenchmarksPage() {
                     <td className="px-4 py-3.5 font-medium">
                       <Link 
                         to={`/models/chat/${encodeURIComponent(m.modelId)}`} 
-                        className="hover:underline text-foreground flex items-center gap-1.5"
+                        className="rounded px-1 -mx-1 hover:underline text-foreground flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         {m.displayName}
                         {m.supportsVision && (

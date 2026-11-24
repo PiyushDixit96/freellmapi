@@ -61,6 +61,7 @@ const ROUTES = [
   { path: '/models/search', id: 'models-search' },
   { path: '/models/fusion', id: 'models-fusion' },
   { path: '/keys', id: 'keys-providers' },
+  { path: '/agents', id: 'agents-page' },
   { path: '/benchmarks', id: 'benchmarks' },
   { path: '/analytics', id: 'analytics' },
   { path: '/logs', id: 'logs' },
