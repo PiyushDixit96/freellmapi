@@ -68,7 +68,7 @@ function SearchEngineCard({
             type="button"
             onClick={onMakeDefault}
             disabled={pending}
-            className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+            className="rounded px-1 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
           >
             {t('search.makeDefault')}
           </button>
@@ -103,8 +103,12 @@ function SearchEngineCard({
             disabled={pending}
             aria-label={e.displayName}
           />
-          <button type="button" className="text-xs underline disabled:opacity-50"
-            onClick={() => test.mutate()} disabled={!e.enabled || e.keyCount === 0 || test.isPending}>
+          <button
+            type="button"
+            className="rounded px-1 text-xs underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            onClick={() => test.mutate()}
+            disabled={!e.enabled || e.keyCount === 0 || test.isPending}
+          >
             {test.isPending ? t('common.loading') : t('keys.testModel')}
           </button>
         </div>

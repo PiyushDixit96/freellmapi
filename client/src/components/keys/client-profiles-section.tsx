@@ -91,7 +91,7 @@ export function ClientProfilesSection() {
     <section className="rounded-3xl border bg-card">
       <button
         type="button"
-        className="flex w-full items-center gap-2 p-5 text-start"
+        className="flex w-full items-center gap-2 p-5 text-start rounded-3xl transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
       >

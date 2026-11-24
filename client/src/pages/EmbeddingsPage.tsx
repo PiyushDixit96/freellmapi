@@ -123,7 +123,7 @@ function SortableProviderRow({
           {...attributes}
           {...listeners}
           aria-label={t('embeddings.dragToReorder')}
-          className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-foreground transition-colors"
+          className="cursor-grab active:cursor-grabbing text-muted-foreground/80 hover:text-foreground transition-colors"
         >
           {dragDots}
         </button>
@@ -162,7 +162,7 @@ function SortableProviderRow({
               onClick={() => onMove(-1)}
               disabled={i === 0}
               aria-label={t('embeddings.moveUp')}
-              className="rounded-md p-1 text-muted-foreground/60 hover:text-foreground disabled:opacity-25 transition-colors"
+              className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-25 transition-colors"
             >
               <ArrowUp className="size-3.5" />
             </button>
@@ -170,7 +170,7 @@ function SortableProviderRow({
               onClick={() => onMove(1)}
               disabled={i === count - 1}
               aria-label={t('embeddings.moveDown')}
-              className="rounded-md p-1 text-muted-foreground/60 hover:text-foreground disabled:opacity-25 transition-colors"
+              className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-25 transition-colors"
             >
               <ArrowDown className="size-3.5" />
             </button>

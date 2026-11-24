@@ -101,14 +101,18 @@ export default function MediaDetailPage({ modality }: { modality: 'image' | 'vid
               <p className="mt-0.5 mb-3 text-xs text-muted-foreground">{t('models.providerIdsHint')}</p>
               <div className="space-y-1.5">
                 {members.map(m => (
-                  <div key={m.id} className={`flex items-center gap-2 text-xs ${m.enabled ? '' : 'opacity-50'}`}>
-                    <span className="w-28 shrink-0 text-muted-foreground">{m.platform}</span>
-                    <code className="min-w-0 flex-1 truncate font-mono text-[11px]">{m.modelId}</code>
-                    {m.keyCount === 0 && (
-                      <span className="text-[10px] rounded-full px-1.5 py-0.5 bg-amber-600/15 text-amber-700 dark:bg-amber-400/15 dark:text-amber-400">{t('models.noKey')}</span>
-                    )}
-                    <CopyButton text={m.modelId} label={t('models.copyModelName')} />
-                    <Switch checked={m.enabled} onCheckedChange={(c) => toggle.mutate({ mediaId: m.id, enabled: c })} />
+                  <div key={m.id} className={`flex flex-wrap items-center justify-between gap-2 text-xs py-1 ${m.enabled ? '' : 'opacity-50'}`}>
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      <span className="w-24 sm:w-28 shrink-0 text-muted-foreground">{m.platform}</span>
+                      <code className="min-w-0 flex-1 truncate font-mono text-[11px]">{m.modelId}</code>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {m.keyCount === 0 && (
+                        <span className="text-[10px] rounded-full px-1.5 py-0.5 bg-amber-600/15 text-amber-700 dark:bg-amber-400/15 dark:text-amber-400">{t('models.noKey')}</span>
+                      )}
+                      <CopyButton text={m.modelId} label={t('models.copyModelName')} />
+                      <Switch checked={m.enabled} onCheckedChange={(c) => toggle.mutate({ mediaId: m.id, enabled: c })} />
+                    </div>
                   </div>
                 ))}
               </div>

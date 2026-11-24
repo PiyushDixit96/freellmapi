@@ -319,7 +319,7 @@ export default function LogsPage() {
                   resetStream()
                 }}
                 className={cn(
-                  'inline-flex h-7 items-center gap-1.5 rounded-4xl border border-transparent px-2.5 text-xs font-medium transition-colors',
+                  'inline-flex h-7 items-center gap-1.5 rounded-4xl border border-transparent px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   active ? LEVEL_CLASS[level] : 'bg-muted/40 text-muted-foreground hover:text-foreground',
                 )}
               >

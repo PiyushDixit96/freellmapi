@@ -74,7 +74,7 @@ export function BackupsSection() {
         type="button"
         onClick={() => setExpanded(value => !value)}
         aria-expanded={expanded}
-        className="flex w-full items-start justify-between gap-4 text-left"
+        className="flex w-full items-start justify-between gap-4 text-left rounded-3xl transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <div>
           <h2 className="text-sm font-medium flex items-center gap-2">

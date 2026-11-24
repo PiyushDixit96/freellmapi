@@ -260,7 +260,7 @@ export function AddKeyForm({ onSuccess, initialPlatform }: { onSuccess: (offer?:
               <button
                 type="button"
                 onClick={() => setSeveral(v => !v)}
-                className={`text-[11px] underline-offset-2 hover:underline ${severalMode ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                className={`rounded px-1 text-[11px] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${severalMode ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}
               >
                 {t('keys.pasteSeveral')}
               </button>

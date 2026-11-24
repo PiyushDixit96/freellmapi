@@ -51,7 +51,7 @@ export function AxisNoData() {
     <Tooltip text={t('models.noDataTitle')}>
       <div className="flex items-center gap-1.5 cursor-help">
         <div className="h-1.5 w-12 rounded-full border border-dashed border-muted-foreground/30" />
-        <span className="text-[10px] text-muted-foreground/60 whitespace-nowrap">{t('models.noData')}</span>
+        <span className="text-[10px] text-muted-foreground whitespace-nowrap">{t('models.noData')}</span>
       </div>
     </Tooltip>
   )
@@ -224,7 +224,7 @@ export function RowContent({
             <span className="text-[10px] text-amber-600 dark:text-amber-400">{t('models.penalty', { value: row.penalty })}</span>
           )}
           {row.totalRequests !== undefined && row.totalRequests > 0 && (
-            <span className="text-[10px] text-muted-foreground/60 tabular-nums">{t('models.obs', { count: row.totalRequests })}</span>
+            <span className="text-[10px] text-muted-foreground tabular-nums">{t('models.obs', { count: row.totalRequests })}</span>
           )}
         </div>
         <div className="text-[11px] text-muted-foreground/70 tabular-nums mt-0.5">
@@ -452,7 +452,7 @@ export function GroupHeaderCells({ group, rank, dragHandle, editableRank, onMove
           <Tooltip text={t('models.perProviderScores', { list: scoreBreakdown })}>
             <span className="inline-flex flex-col items-end cursor-help">
               <span>{best.score !== undefined ? best.score.toFixed(3) : '–'}</span>
-              <span className="text-[10px] font-normal text-muted-foreground/60 whitespace-nowrap">{t('models.bestOfN', { count: group.members.length })}</span>
+              <span className="text-[10px] font-normal text-muted-foreground whitespace-nowrap">{t('models.bestOfN', { count: group.members.length })}</span>
             </span>
           </Tooltip>
         )}
@@ -486,7 +486,7 @@ export function SortableGroupRow({ group, rank, editableRank, onMoveRank, onTogg
       {...attributes}
       {...listeners}
       onClick={e => e.stopPropagation()}
-      className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-foreground transition-colors"
+      className="cursor-grab active:cursor-grabbing text-muted-foreground/80 hover:text-foreground transition-colors"
       aria-label={t('models.dragToReorderGroup')}
     >
       {dragDots}

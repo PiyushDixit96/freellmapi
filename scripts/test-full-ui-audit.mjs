@@ -7,8 +7,10 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:3001';
 const CHROME_PATH = process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const ARTIFACT_DIR = process.env.ARTIFACT_DIR || 'C:\\Users\\Lenov\\.gemini\\antigravity\\brain\\42ef4afd-5a60-473e-924d-fe16f14a3323';
 
+const PREFIX = process.argv.includes('--after') ? 'after' : 'before';
+
 function getSetupCodeFromDocker() {
-  for (const name of ['freellmapi', 'freellmapi-keys-debug']) {
+  for (const name of ['freellmapi-freellmapi-1', 'freellmapi', 'freellmapi-keys-debug']) {
     try {
       const logs = execSync(`docker logs ${name}`, { encoding: 'utf-8' });
       const match = logs.match(/First-run setup code:\s*([A-Z0-9]+)/);
@@ -81,8 +83,26 @@ async function checkOverflow(page, label) {
   return { hasOverflow: false, scrollWidth, clientWidth, label };
 }
 
+async function auditAccessibility(page, label) {
+  // Check for icon buttons without aria-label or text content
+  const namelessButtons = await page.evaluate(() => {
+    const buttons = Array.from(document.querySelectorAll('button, a[role="button"]'));
+    return buttons
+      .filter(b => {
+        const text = (b.innerText || b.textContent || '').trim();
+        const ariaLabel = b.getAttribute('aria-label');
+        const ariaLabelledBy = b.getAttribute('aria-labelledby');
+        const title = b.getAttribute('title');
+        return !text && !ariaLabel && !ariaLabelledBy && !title;
+      })
+      .map(b => b.outerHTML.slice(0, 100));
+  });
+
+  return { label, namelessButtonsCount: namelessButtons.length, namelessButtons };
+}
+
 async function run() {
-  console.log(`[Full UI Audit] Starting Playwright UI Audit...`);
+  console.log(`[Full UI Audit] Starting Playwright UI Audit (Mode: ${PREFIX})...`);
   const token = await obtainAuthToken(BASE_URL);
   console.log(`[Full UI Audit] Auth token obtained:`, !!token);
 
@@ -92,12 +112,13 @@ async function run() {
   });
 
   const issues = [];
+  const a11yIssues = [];
   const screenshots = [];
 
   try {
     for (const vp of VIEWPORTS) {
       console.log(`\n======================================================`);
-      console.log(`Testing Viewport: ${vp.name} (${vp.width}x${vp.height})`);
+      console.log(`Testing Viewport: ${vp.name} (${vp.width}x${vp.height}) [${PREFIX}]`);
       console.log(`======================================================`);
 
       const context = await browser.newContext({
@@ -132,7 +153,12 @@ async function run() {
           console.log(`OK (${overflow.scrollWidth}px)`);
         }
 
-        const shotPath = path.join(ARTIFACT_DIR, `fullui-${vp.name}-${route.id}.png`);
+        const a11y = await auditAccessibility(page, `${vp.name} ${route.path}`);
+        if (a11y.namelessButtonsCount > 0) {
+          a11yIssues.push(a11y);
+        }
+
+        const shotPath = path.join(ARTIFACT_DIR, `${PREFIX}-${vp.name}-${route.id}.png`);
         await page.screenshot({ path: shotPath, fullPage: false });
         screenshots.push(shotPath);
       }
@@ -142,8 +168,6 @@ async function run() {
       const keyTabs = ['apiKey', 'anthropic', 'agents', 'quotaSignals'];
       for (const tabId of keyTabs) {
         process.stdout.write(`  [${vp.name}] Keys tab: ${tabId} ... `);
-        const tabButton = page.locator(`button[role="radio"][value="${tabId}"], button[role="tab"]`).filter({ hasText: new RegExp(tabId, 'i') }).first();
-        // Segmented control button
         const segBtn = page.locator(`button`).filter({ hasText: tabId === 'apiKey' ? /Unified|API Key/i : tabId === 'anthropic' ? /Anthropic|Claude/i : tabId === 'agents' ? /Agents/i : /Quota/i }).first();
         if (await segBtn.count() > 0) {
           await segBtn.click();
@@ -155,7 +179,7 @@ async function run() {
           } else {
             console.log(`OK`);
           }
-          const tabShot = path.join(ARTIFACT_DIR, `fullui-${vp.name}-keys-${tabId}.png`);
+          const tabShot = path.join(ARTIFACT_DIR, `${PREFIX}-${vp.name}-keys-${tabId}.png`);
           await page.screenshot({ path: tabShot, fullPage: false });
           screenshots.push(tabShot);
         } else {
@@ -179,11 +203,10 @@ async function run() {
           } else {
             console.log(`OK (rendered cleanly)`);
           }
-          const shot = path.join(ARTIFACT_DIR, `fullui-${vp.name}-modal-addkey.png`);
+          const shot = path.join(ARTIFACT_DIR, `${PREFIX}-${vp.name}-modal-addkey.png`);
           await page.screenshot({ path: shot, fullPage: false });
           screenshots.push(shot);
 
-          // Close modal via Escape
           await page.keyboard.press('Escape');
           await page.waitForTimeout(200);
         } else {
@@ -197,7 +220,6 @@ async function run() {
       await page.waitForTimeout(400);
       let palVisible = await page.locator('[role="dialog"][aria-label*="Search"], [role="dialog"][aria-label*="palette"]').isVisible().catch(() => false);
       if (!palVisible) {
-        // Try clicking search button
         const searchBtn = page.locator('header button').filter({ has: page.locator('svg.lucide-search') }).first();
         if (await searchBtn.count() > 0) {
           await searchBtn.click();
@@ -213,7 +235,7 @@ async function run() {
         } else {
           console.log(`OK`);
         }
-        const shot = path.join(ARTIFACT_DIR, `fullui-${vp.name}-modal-palette.png`);
+        const shot = path.join(ARTIFACT_DIR, `${PREFIX}-${vp.name}-modal-palette.png`);
         await page.screenshot({ path: shot, fullPage: false });
         screenshots.push(shot);
         await page.keyboard.press('Escape');
@@ -222,10 +244,9 @@ async function run() {
         console.log(`Palette not opened`);
       }
 
-      // 5. Test Settings Dialog
-      process.stdout.write(`  [${vp.name}] Modal: Settings Dialog ... `);
+      // 5. Test Settings Dialog (General & Compression Sections)
+      process.stdout.write(`  [${vp.name}] Modal: Settings Dialog (General) ... `);
       if (vp.isMobile) {
-        // On mobile, settings is inside the hamburger menu dropdown
         const menuBtn = page.locator('header .lg\\:hidden button[aria-label*="menu" i]').first();
         if (await menuBtn.count() > 0) {
           await menuBtn.click();
@@ -237,7 +258,6 @@ async function run() {
           }
         }
       } else {
-        // On desktop, settings is in the more menu dropdown
         const moreBtn = page.locator('header .lg\\:flex button[aria-label*="menu" i]').first();
         if (await moreBtn.count() > 0) {
           await moreBtn.click();
@@ -249,7 +269,7 @@ async function run() {
           }
         }
       }
-      const settingsModal = await page.locator('[data-slot="dialog-popup"]').isVisible().catch(() => false);
+      let settingsModal = await page.locator('[data-slot="dialog-popup"]').isVisible().catch(() => false);
       if (settingsModal) {
         const overflow = await checkOverflow(page, `${vp.name} Settings Modal`);
         if (overflow.hasOverflow) {
@@ -258,9 +278,20 @@ async function run() {
         } else {
           console.log(`OK`);
         }
-        const shot = path.join(ARTIFACT_DIR, `fullui-${vp.name}-modal-settings.png`);
+        const shot = path.join(ARTIFACT_DIR, `${PREFIX}-${vp.name}-modal-settings-general.png`);
         await page.screenshot({ path: shot, fullPage: false });
         screenshots.push(shot);
+
+        // Click into Compression Section tab
+        const compTab = page.locator('[data-slot="dialog-popup"] nav button').filter({ hasText: /Compression/i }).first();
+        if (await compTab.count() > 0) {
+          await compTab.click();
+          await page.waitForTimeout(300);
+          const compShot = path.join(ARTIFACT_DIR, `${PREFIX}-${vp.name}-modal-settings-compression.png`);
+          await page.screenshot({ path: compShot, fullPage: false });
+          screenshots.push(compShot);
+        }
+
         await page.keyboard.press('Escape');
         await page.waitForTimeout(200);
       } else {
@@ -283,7 +314,7 @@ async function run() {
             } else {
               console.log(`OK`);
             }
-            const shot = path.join(ARTIFACT_DIR, `fullui-${vp.name}-mobile-menu.png`);
+            const shot = path.join(ARTIFACT_DIR, `${PREFIX}-${vp.name}-mobile-menu.png`);
             await page.screenshot({ path: shot, fullPage: false });
             screenshots.push(shot);
             await page.keyboard.press('Escape');
@@ -298,15 +329,19 @@ async function run() {
     }
 
     console.log(`\n======================================================`);
-    console.log(`[Full UI Audit] Summary:`);
+    console.log(`[Full UI Audit (${PREFIX})] Summary:`);
     console.log(`Screenshots Captured: ${screenshots.length}`);
-    console.log(`Issues / Overflows Found: ${issues.length}`);
+    console.log(`Overflows Found: ${issues.length}`);
+    console.log(`A11y Button Findings: ${a11yIssues.length}`);
     if (issues.length > 0) {
       console.log(`Issues details:`, JSON.stringify(issues, null, 2));
-    } else {
-      console.log(`ALL PAGES, SECTIONS, AND POPUPS PASSED WITHOUT OVERFLOW!`);
     }
     console.log(`======================================================\n`);
+
+    // Write audit findings JSON to disk
+    const reportPath = path.join(ARTIFACT_DIR, `audit-baseline-${PREFIX}.json`);
+    fs.writeFileSync(reportPath, JSON.stringify({ prefix: PREFIX, screenshots, issues, a11yIssues }, null, 2));
+    console.log(`Saved audit report to ${reportPath}`);
 
   } finally {
     await browser.close();

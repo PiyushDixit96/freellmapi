@@ -46,7 +46,7 @@ export function KeylessNotice() {
         aria-label={t('common.dismiss')}
         onClick={() => dismiss.mutate()}
         disabled={enableAll.isPending || dismiss.isPending}
-        className="rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
+        className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <X className="size-3.5" />
       </button>

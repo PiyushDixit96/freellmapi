@@ -31,9 +31,9 @@ export function SegmentedControl<T extends string>({
           role="tab"
           aria-selected={value === o.value}
           onClick={() => onValueChange(o.value)}
-          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs transition-colors ${
+          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
             value === o.value
-              ? 'bg-foreground text-background font-medium'
+              ? 'bg-foreground text-background font-medium shadow-xs'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted'
           }`}
         >

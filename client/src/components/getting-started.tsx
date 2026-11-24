@@ -83,7 +83,7 @@ export function GettingStarted() {
             type="button"
             aria-label={t('common.dismiss')}
             onClick={() => { setDismissed(true); writeFlag(DISMISS_KEY) }}
-            className="rounded-md p-1 text-muted-foreground/60 transition-colors hover:text-foreground"
+            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <X className="size-3.5" />
           </button>

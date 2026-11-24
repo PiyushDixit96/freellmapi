@@ -9,8 +9,8 @@ import { useI18n } from '@/i18n'
 export function ModelsTabs() {
   const { t } = useI18n()
   const tab = (isActive: boolean) =>
-    `inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors ${
-      isActive ? 'bg-foreground text-background font-medium' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+    `inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
+      isActive ? 'bg-foreground text-background font-medium shadow-xs' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
     }`
   return (
     <div className="inline-flex max-w-full gap-1 overflow-x-auto rounded-xl border p-1 [&>a]:shrink-0 touch-pan-x [-webkit-overflow-scrolling:touch]">

@@ -292,7 +292,7 @@ function AuthForm({
               <button
                 type="button"
                 onClick={() => setShowForgot(true)}
-                className="mt-3 w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
+                className="mt-3 w-full rounded-md py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {t('auth.forgotPassword')}
               </button>
@@ -427,7 +427,7 @@ function ForgotPasswordForm({ onBack, onAuthed }: { onBack: () => void; onAuthed
         <button
           type="button"
           onClick={onBack}
-          className="mt-3 w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="mt-3 w-full rounded-md py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {t('auth.backToLogin')}
         </button>

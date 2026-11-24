@@ -34,7 +34,8 @@ export function CopyButton({ text, className, label = 'Copy' }: CopyButtonProps)
         })
       }}
       className={cn(
-        'inline-flex items-center justify-center rounded-md border bg-background/80 text-muted-foreground transition-colors hover:text-foreground',
+        'inline-flex size-7 shrink-0 items-center justify-center rounded-md border bg-background/80 text-muted-foreground transition-all hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+        copied && 'border-emerald-500/50 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
         className,
       )}
     >

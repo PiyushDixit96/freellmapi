@@ -509,7 +509,7 @@ export function ProviderList({ onAddKey }: { onAddKey: (platform?: Platform) => 
                   <button
                     type="button"
                     onClick={() => toggleGroup(group.value, expanded)}
-                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left rounded-lg p-1 -m-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     aria-expanded={expanded}
                   >
                     <h3 className="text-sm font-medium">{group.label}</h3>
@@ -733,7 +733,7 @@ export function ProviderList({ onAddKey }: { onAddKey: (platform?: Platform) => 
                               type="button"
                               onClick={() => startEditing(k)}
                               title={t('keys.editKey')}
-                              className={`max-w-[220px] truncate rounded text-xs hover:text-foreground hover:underline underline-offset-2 ${k.label ? 'text-muted-foreground' : 'text-muted-foreground/50'} ${k.enabled ? '' : 'opacity-50'}`}
+                              className={`max-w-[220px] truncate rounded px-1 -mx-1 text-xs hover:text-foreground hover:underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${k.label ? 'text-muted-foreground' : 'text-muted-foreground/80'} ${k.enabled ? '' : 'opacity-50'}`}
                             >
                               {k.label || t('keys.editKey')}
                             </button>

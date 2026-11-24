@@ -27,10 +27,10 @@ export function SortableHeader<C extends string>({ column, label, align = 'left'
         type="button"
         onClick={() => onToggle(column)}
         aria-label={t('analytics.sortBy', { column: label })}
-        className={`inline-flex items-center gap-1 select-none ${align === 'right' ? 'flex-row-reverse' : ''}`}
+        className={`inline-flex items-center gap-1 select-none rounded px-1 -mx-1 py-0.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${align === 'right' ? 'flex-row-reverse' : ''}`}
       >
-        <span>{label}</span>
-        <Indicator className={`size-3 shrink-0 ${direction ? '' : 'text-muted-foreground opacity-60'}`} aria-hidden="true" />
+        <span className={direction ? 'font-medium text-foreground' : ''}>{label}</span>
+        <Indicator className={`size-3 shrink-0 ${direction ? 'text-foreground' : 'text-muted-foreground'}`} aria-hidden="true" />
       </button>
     </TableHead>
   )

@@ -67,7 +67,7 @@ function DecisionModelCard({
           </span>
           <button
             type="button"
-            className="text-xs underline disabled:opacity-50"
+            className="rounded px-1 text-xs underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
             onClick={() => test.mutate()}
             disabled={!m.enabled || m.keyCount === 0 || test.isPending}
           >
