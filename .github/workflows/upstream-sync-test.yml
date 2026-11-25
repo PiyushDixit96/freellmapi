@@ -6,7 +6,7 @@ on:
       target_branch:
         description: 'Branch to sync and test against upstream'
         required: true
-        default: 'main-copy'
+        default: 'main'
         type: string
       sync_strategy:
         description: 'Sync strategy: rebase (linear history) or merge'
@@ -32,11 +32,15 @@ on:
         default: true
         type: boolean
   schedule:
-    # Run daily at 02:00 UTC to auto rebase/sync main-copy against upstream
-    - cron: '0 2 * * *'
+    # Check upstream every 6 hours and auto rebase/sync main if tests pass
+    - cron: '0 */6 * * *'
 
 permissions:
   contents: write
+
+concurrency:
+  group: upstream-sync-${{ inputs.target_branch || 'main' }}
+  cancel-in-progress: false
 
 jobs:
   sync-and-test:
@@ -46,7 +50,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.target_branch || 'main-copy' }}
+          ref: ${{ inputs.target_branch || 'main' }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -143,21 +147,23 @@ jobs:
       - name: Push to target branch
         if: steps.fetch_upstream.outputs.has_commits == 'true' && (inputs.push_on_success != false || github.event_name == 'schedule')
         env:
-          TARGET_BRANCH: ${{ inputs.target_branch || 'main-copy' }}
+          TARGET_BRANCH: ${{ inputs.target_branch || 'main' }}
           STRATEGY: ${{ inputs.sync_strategy || 'rebase' }}
         run: |
           echo "Pushing verified changes to origin/$TARGET_BRANCH..."
+          git fetch origin "$TARGET_BRANCH"
+          EXPECT_SHA=$(git rev-parse "origin/$TARGET_BRANCH")
           if [ "$STRATEGY" = "rebase" ]; then
-            git push origin HEAD:$TARGET_BRANCH --force-with-lease
+            git push origin "HEAD:refs/heads/$TARGET_BRANCH" --force-with-lease="refs/heads/$TARGET_BRANCH:$EXPECT_SHA"
           else
-            git push origin HEAD:$TARGET_BRANCH
+            git push origin "HEAD:refs/heads/$TARGET_BRANCH"
           fi
 
       - name: Workflow summary
         if: always()
         run: |
           echo "### Upstream Sync & Test Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- **Target branch**: \`${{ inputs.target_branch || 'main-copy' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target branch**: \`${{ inputs.target_branch || 'main' }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Sync strategy**: \`${{ inputs.sync_strategy || 'rebase' }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Upstream repo**: \`${{ inputs.upstream_repo || 'https://github.com/tashfeenahmed/freellmapi.git' }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Has new commits**: \`${{ steps.fetch_upstream.outputs.has_commits }}\`" >> $GITHUB_STEP_SUMMARY
