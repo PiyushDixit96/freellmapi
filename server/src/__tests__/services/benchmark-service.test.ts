@@ -122,4 +122,46 @@ describe('Benchmark Service', () => {
     expect(typeof status.intervalMs).toBe('number');
     expect(typeof status.runsTotal).toBe('number');
   });
+
+  it('tracks use-case metrics, lastBenchmarkedAt datetime, and rate-limit status', () => {
+    const db = getDb();
+    recordBenchmark(db, {
+      platform: 'google',
+      model_id: 'gemini-2.5-flash',
+      source: 'micro_probe',
+      benchmark_suite: 'fast_text',
+      metric_name: 'fast_text_ms',
+      metric_value: 280,
+      unit: 'ms',
+    });
+    recordBenchmark(db, {
+      platform: 'google',
+      model_id: 'gemini-2.5-flash',
+      source: 'micro_probe',
+      benchmark_suite: 'coding',
+      metric_name: 'coding_accuracy',
+      metric_value: 100,
+      unit: '%',
+    });
+    recordBenchmark(db, {
+      platform: 'google',
+      model_id: 'gemini-2.5-flash',
+      source: 'micro_probe',
+      benchmark_suite: 'structured_json',
+      metric_name: 'json_accuracy',
+      metric_value: 100,
+      unit: '%',
+    });
+
+    const summaries = getBenchmarkSummary(db, { search: 'gemini-2.5-flash', sort: 'fast_text' });
+    const target = summaries.find(s => s.platform === 'google' && s.modelId === 'gemini-2.5-flash');
+    expect(target).toBeDefined();
+    expect(target?.fastTextMs).toBe(280);
+    expect(target?.lastBenchmarkedAt).toBeTruthy();
+    expect(target?.lastTestedAt).toBeTruthy();
+    expect(target?.useCases.coding).toBe(100);
+    expect(target?.useCases.structuredJson).toBe(100);
+    expect(target?.rateLimitInfo).toBeDefined();
+    expect(['ready', 'no_key', 'rate_limited', 'quota_reached', 'error']).toContain(target?.rateLimitInfo.status);
+  });
 });

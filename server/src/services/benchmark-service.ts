@@ -18,6 +18,24 @@ export interface BenchmarkRecord {
   recorded_at?: string;
 }
 
+export interface ModelBenchmarkUseCases {
+  fastTextMs: number | null;
+  coding: number | null;
+  structuredJson: number | null;
+  reasoning: number | null;
+  tools: number | null;
+}
+
+export interface ModelRateLimitInfo {
+  status: 'ready' | 'rate_limited' | 'quota_reached' | 'no_key' | 'error';
+  cooldownUntil: string | null;
+  rateLimitHits14d: number;
+  quotaRemaining: number | null;
+  quotaLimit: number | null;
+  quotaMetric: string | null;
+  quotaResetAt: string | null;
+}
+
 export interface ModelBenchmarkSummary {
   modelDbId: number;
   platform: string;
@@ -29,6 +47,7 @@ export interface ModelBenchmarkSummary {
   qualityScore: number;       // Normalized 0 - 100
   speedScore: number;         // Normalized 0 - 100
   ttfbMs: number;             // Milliseconds
+  fastTextMs: number | null;  // Less/no thinking text response ms
   tokensPerSec: number;       // Output throughput
   reliability: number;        // Success rate 0 - 1
   toolAccuracy: number | null;// % pass rate or null if not tool capable
@@ -37,6 +56,9 @@ export interface ModelBenchmarkSummary {
   monthlyTokenBudget: string | null;
   sampleCount: number;
   lastTestedAt: string | null;
+  lastBenchmarkedAt: string | null;
+  useCases: ModelBenchmarkUseCases;
+  rateLimitInfo: ModelRateLimitInfo;
 }
 
 export interface ModelBenchmarkDetail {
@@ -205,7 +227,7 @@ export function getBenchmarkSummary(db: Db, filters: {
   modality?: string;
   platform?: string;
   search?: string;
-  sort?: 'quality' | 'speed' | 'ttfb' | 'name' | 'tool';
+  sort?: 'quality' | 'speed' | 'ttfb' | 'name' | 'tool' | 'fast_text' | 'last_tested';
 } = {}): ModelBenchmarkSummary[] {
   // Ensure external baseline is present
   seedExternalBenchmarks(db);
@@ -258,6 +280,7 @@ export function getBenchmarkSummary(db: Db, filters: {
     tokensPerSec: number;
     reliability: number;
     sampleCount: number;
+    rateLimitHits14d: number;
     lastTestedAt: string | null;
   }>();
 
@@ -267,6 +290,7 @@ export function getBenchmarkSummary(db: Db, filters: {
       model_id,
       COUNT(*) AS total,
       SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS successes,
+      SUM(CASE WHEN status != 'success' AND (error LIKE '%429%' OR LOWER(error) LIKE '%rate limit%' OR LOWER(error) LIKE '%quota%') THEN 1 ELSE 0 END) AS rate_limit_hits,
       AVG(CASE WHEN status = 'success' AND ttfb_ms > 0 THEN ttfb_ms ELSE NULL END) AS avg_ttfb,
       AVG(CASE WHEN status = 'success' AND latency_ms > 0 AND output_tokens > 0 
                THEN (output_tokens * 1000.0 / latency_ms) ELSE NULL END) AS avg_tps,
@@ -279,6 +303,7 @@ export function getBenchmarkSummary(db: Db, filters: {
     model_id: string;
     total: number;
     successes: number;
+    rate_limit_hits: number;
     avg_ttfb: number | null;
     avg_tps: number | null;
     last_seen: string | null;
@@ -291,8 +316,73 @@ export function getBenchmarkSummary(db: Db, filters: {
       tokensPerSec: Math.round((r.avg_tps ?? 45) * 10) / 10,
       reliability: r.total > 0 ? r.successes / r.total : 1.0,
       sampleCount: r.total,
+      rateLimitHits14d: r.rate_limit_hits ?? 0,
       lastTestedAt: r.last_seen,
     });
+  }
+
+  // Gather active cooldowns per platform+model
+  const nowMs = Date.now();
+  const cooldownMap = new Map<string, string>();
+  const cooldownRows = db.prepare(`
+    SELECT platform, model_id, MAX(expires_at_ms) AS max_expires
+    FROM rate_limit_cooldowns
+    WHERE expires_at_ms > ?
+    GROUP BY platform, model_id
+  `).all(nowMs) as Array<{ platform: string; model_id: string; max_expires: number }>;
+  for (const c of cooldownRows) {
+    cooldownMap.set(`${c.platform}:${c.model_id}`, new Date(c.max_expires).toISOString());
+  }
+
+  // Gather enabled key statuses per platform
+  const keyStatusMap = new Map<string, { hasEnabledKey: boolean; hasHealthyOrUnknown: boolean; allRateLimited: boolean; hasError: boolean }>();
+  const keyRows = db.prepare(`
+    SELECT platform, status FROM api_keys WHERE enabled = 1
+  `).all() as Array<{ platform: string; status: string }>;
+  for (const k of keyRows) {
+    let cur = keyStatusMap.get(k.platform);
+    if (!cur) {
+      cur = { hasEnabledKey: true, hasHealthyOrUnknown: false, allRateLimited: true, hasError: false };
+      keyStatusMap.set(k.platform, cur);
+    }
+    if (k.status === 'healthy' || k.status === 'unknown') {
+      cur.hasHealthyOrUnknown = true;
+      cur.allRateLimited = false;
+    } else if (k.status !== 'rate_limited') {
+      cur.allRateLimited = false;
+      cur.hasError = true;
+    }
+  }
+
+  // Gather latest provider quota snapshots per platform
+  const quotaMap = new Map<string, { remaining: number | null; limit: number | null; metric: string; resetAt: string | null }>();
+  const quotaRows = db.prepare(`
+    SELECT platform, metric, limit_value, remaining_value, reset_at
+    FROM provider_quota_state
+    ORDER BY observed_at ASC
+  `).all() as Array<{ platform: string; metric: string; limit_value: number | null; remaining_value: number | null; reset_at: string | null }>;
+  for (const q of quotaRows) {
+    quotaMap.set(q.platform, {
+      remaining: q.remaining_value,
+      limit: q.limit_value,
+      metric: q.metric,
+      resetAt: q.reset_at,
+    });
+  }
+
+  // Gather latest model_probe_status timestamps
+  const probeTimestampMap = new Map<string, string>();
+  try {
+    const probeRows = db.prepare(`
+      SELECT platform, model_id, MAX(last_probed_at) AS last_probed
+      FROM model_probe_status
+      GROUP BY platform, model_id
+    `).all() as Array<{ platform: string; model_id: string; last_probed: string | null }>;
+    for (const p of probeRows) {
+      if (p.last_probed) probeTimestampMap.set(`${p.platform}:${p.model_id}`, p.last_probed);
+    }
+  } catch {
+    // Table may not exist on partial test schemas
   }
 
   // Gather benchmark metrics from model_benchmarks table
@@ -301,16 +391,21 @@ export function getBenchmarkSummary(db: Db, filters: {
     toolAccuracy?: number;
     microSpeed?: number;
     microTtfb?: number;
-    lastTestedAt?: string;
+    fastTextMs?: number;
+    codingAccuracy?: number;
+    jsonAccuracy?: number;
+    mathAccuracy?: number;
+    lastBenchmarkedAt?: string;
   }>();
 
   const benchRows = db.prepare(`
-    SELECT platform, model_id, metric_name, metric_value, recorded_at
+    SELECT platform, model_id, source, metric_name, metric_value, recorded_at
     FROM model_benchmarks
     ORDER BY id ASC
   `).all() as Array<{
     platform: string;
     model_id: string;
+    source: string;
     metric_name: string;
     metric_value: number;
     recorded_at: string;
@@ -324,13 +419,23 @@ export function getBenchmarkSummary(db: Db, filters: {
     if (b.metric_name === 'tool_call_accuracy') m.toolAccuracy = b.metric_value;
     if (b.metric_name === 'tokens_per_sec') m.microSpeed = b.metric_value;
     if (b.metric_name === 'ttfb_ms') m.microTtfb = b.metric_value;
-    m.lastTestedAt = b.recorded_at;
+    if (b.metric_name === 'fast_text_ms') m.fastTextMs = b.metric_value;
+    if (b.metric_name === 'coding_accuracy') m.codingAccuracy = b.metric_value;
+    if (b.metric_name === 'json_accuracy') m.jsonAccuracy = b.metric_value;
+    if (b.metric_name === 'math_accuracy') m.mathAccuracy = b.metric_value;
+    if (b.source === 'micro_probe') {
+      m.lastBenchmarkedAt = b.recorded_at;
+    }
   }
 
   const summaries: ModelBenchmarkSummary[] = rows.map(row => {
     const key = `${row.platform}:${row.modelId}`;
     const passive = passiveStats.get(key);
     const bench = benchMetrics.get(key);
+    const cooldownUntil = cooldownMap.get(key) ?? null;
+    const keyState = keyStatusMap.get(row.platform);
+    const quota = quotaMap.get(row.platform);
+    const probeAt = probeTimestampMap.get(key) ?? null;
 
     const baseQuality = baselineQualityScore(row.sizeLabel, row.intelligenceRank);
     const qualityScore = bench?.aaIntel ?? baseQuality;
@@ -340,7 +445,22 @@ export function getBenchmarkSummary(db: Db, filters: {
     let tokensPerSec = bench?.microSpeed ?? passive?.tokensPerSec ?? (row.speedRank <= 5 ? 120 : row.speedRank <= 20 ? 65 : 30);
     let reliability = passive ? passive.reliability : 0.99;
     let sampleCount = passive ? passive.sampleCount : 0;
-    let lastTestedAt = bench?.lastTestedAt ?? passive?.lastTestedAt ?? null;
+
+    const candidateDates = [bench?.lastBenchmarkedAt, passive?.lastTestedAt, probeAt].filter((d): d is string => Boolean(d));
+    const lastTestedAt = candidateDates.length > 0 ? candidateDates.sort().reverse()[0] : null;
+    const lastBenchmarkedAt = bench?.lastBenchmarkedAt ?? null;
+
+    // Determine live rate-limit / quota status
+    let rateStatus: ModelRateLimitInfo['status'] = 'ready';
+    if (!keyState?.hasEnabledKey) {
+      rateStatus = 'no_key';
+    } else if (quota && quota.remaining !== null && quota.remaining <= 0) {
+      rateStatus = 'quota_reached';
+    } else if (cooldownUntil || (keyState.allRateLimited && !keyState.hasHealthyOrUnknown)) {
+      rateStatus = 'rate_limited';
+    } else if (!keyState.hasHealthyOrUnknown && keyState.hasError) {
+      rateStatus = 'error';
+    }
 
     // Normalize speed score: higher tokens/sec and lower TTFB give higher score
     const speedScore = Math.max(10, Math.min(99, Math.round(
@@ -348,7 +468,7 @@ export function getBenchmarkSummary(db: Db, filters: {
       Math.max(0, (2000 - ttfbMs) / 2000) * 40
     )));
 
-    const toolAccuracy = row.supportsTools ? (bench?.toolAccuracy ?? 95) : null;
+    const toolAccuracy = row.supportsTools ? (bench?.toolAccuracy ?? null) : null;
 
     return {
       modelDbId: row.modelDbId,
@@ -361,6 +481,7 @@ export function getBenchmarkSummary(db: Db, filters: {
       qualityScore,
       speedScore,
       ttfbMs,
+      fastTextMs: bench?.fastTextMs ?? null,
       tokensPerSec,
       reliability,
       toolAccuracy,
@@ -369,6 +490,23 @@ export function getBenchmarkSummary(db: Db, filters: {
       monthlyTokenBudget: row.monthlyTokenBudget,
       sampleCount,
       lastTestedAt,
+      lastBenchmarkedAt,
+      useCases: {
+        fastTextMs: bench?.fastTextMs ?? null,
+        coding: bench?.codingAccuracy ?? null,
+        structuredJson: bench?.jsonAccuracy ?? null,
+        reasoning: bench?.mathAccuracy ?? null,
+        tools: toolAccuracy,
+      },
+      rateLimitInfo: {
+        status: rateStatus,
+        cooldownUntil,
+        rateLimitHits14d: passive?.rateLimitHits14d ?? 0,
+        quotaRemaining: quota?.remaining ?? null,
+        quotaLimit: quota?.limit ?? null,
+        quotaMetric: quota?.metric ?? null,
+        quotaResetAt: quota?.resetAt ?? null,
+      },
     };
   });
 
@@ -377,6 +515,16 @@ export function getBenchmarkSummary(db: Db, filters: {
   summaries.sort((a, b) => {
     if (sort === 'speed') return b.tokensPerSec - a.tokensPerSec;
     if (sort === 'ttfb') return a.ttfbMs - b.ttfbMs;
+    if (sort === 'fast_text') {
+      const af = a.fastTextMs ?? Number.MAX_SAFE_INTEGER;
+      const bf = b.fastTextMs ?? Number.MAX_SAFE_INTEGER;
+      return af !== bf ? af - bf : a.ttfbMs - b.ttfbMs;
+    }
+    if (sort === 'last_tested') {
+      const at = a.lastTestedAt ?? '';
+      const bt = b.lastTestedAt ?? '';
+      return bt.localeCompare(at);
+    }
     if (sort === 'name') return a.displayName.localeCompare(b.displayName);
     if (sort === 'tool') return (b.toolAccuracy ?? 0) - (a.toolAccuracy ?? 0);
     return b.qualityScore - a.qualityScore;

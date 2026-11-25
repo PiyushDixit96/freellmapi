@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom'
 import { 
   Activity, 
   Award, 
-  CheckCircle2, 
   Eye, 
   Gauge, 
   Play, 
@@ -26,6 +25,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TableSkeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogPopup, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog'
 
+export type BenchmarkSuite =
+  | 'all'
+  | 'fast_text'
+  | 'coding'
+  | 'structured_json'
+  | 'reasoning'
+  | 'tools'
+  | 'speed';
+
 export interface ModelBenchmarkSummary {
   modelDbId: number;
   platform: string;
@@ -37,6 +45,7 @@ export interface ModelBenchmarkSummary {
   qualityScore: number;
   speedScore: number;
   ttfbMs: number;
+  fastTextMs: number | null;
   tokensPerSec: number;
   reliability: number;
   toolAccuracy: number | null;
@@ -45,6 +54,36 @@ export interface ModelBenchmarkSummary {
   monthlyTokenBudget: string | null;
   sampleCount: number;
   lastTestedAt: string | null;
+  lastBenchmarkedAt: string | null;
+  useCases?: {
+    fastTextMs: number | null;
+    coding: number | null;
+    structuredJson: number | null;
+    reasoning: number | null;
+    tools: number | null;
+  };
+  rateLimitInfo?: {
+    status: 'ready' | 'rate_limited' | 'quota_reached' | 'no_key' | 'error';
+    cooldownUntil: string | null;
+    rateLimitHits14d: number;
+    quotaRemaining: number | null;
+    quotaLimit: number | null;
+    quotaMetric: string | null;
+    quotaResetAt: string | null;
+  };
+}
+
+function formatDateTime(isoOrSqlite: string | null | undefined): string {
+  if (!isoOrSqlite) return 'Never'
+  const normalized = isoOrSqlite.includes('T') ? isoOrSqlite : isoOrSqlite.replace(' ', 'T') + 'Z'
+  const d = new Date(normalized)
+  if (Number.isNaN(d.getTime())) return isoOrSqlite
+  return d.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 export default function BenchmarksPage() {
@@ -52,7 +91,8 @@ export default function BenchmarksPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [tierFilter, setTierFilter] = useState('all')
   const [modalityTab, setModalityTab] = useState<'all' | 'tools' | 'vision'>('all')
-  const [sortBy, setSortBy] = useState<'quality' | 'speed' | 'ttfb' | 'name'>('quality')
+  const [sortBy, setSortBy] = useState<'quality' | 'speed' | 'ttfb' | 'fast_text' | 'last_tested' | 'name'>('quality')
+  const [selectedSuite, setSelectedSuite] = useState<BenchmarkSuite>('all')
   
   // Test modal state
   const [testingModel, setTestingModel] = useState<ModelBenchmarkSummary | null>(null)
@@ -99,7 +139,7 @@ export default function BenchmarksPage() {
 
   // Run benchmark probe mutation
   const runProbeMutation = useMutation({
-    mutationFn: (variables: { platform: string; modelId: string }) =>
+    mutationFn: (variables: { platform: string; modelId: string; suite?: BenchmarkSuite }) =>
       apiFetch('/api/benchmarks/run', {
         method: 'POST',
         body: JSON.stringify(variables),
@@ -157,10 +197,54 @@ export default function BenchmarksPage() {
     },
   })
 
-  function handleRunTest(m: ModelBenchmarkSummary) {
+  function handleRunTest(m: ModelBenchmarkSummary, suite: BenchmarkSuite = selectedSuite) {
     setTestingModel(m)
     setTestResult(null)
-    runProbeMutation.mutate({ platform: m.platform, modelId: m.modelId })
+    runProbeMutation.mutate({ platform: m.platform, modelId: m.modelId, suite })
+  }
+
+  function getRateLimitBadge(info?: ModelBenchmarkSummary['rateLimitInfo']) {
+    if (!info || info.status === 'ready') {
+      return (
+        <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px]">
+          Ready
+        </Badge>
+      )
+    }
+    if (info.status === 'rate_limited') {
+      return (
+        <Badge
+          variant="outline"
+          title={info.cooldownUntil ? `Cooldown until ${formatDateTime(info.cooldownUntil)}` : 'Rate limited'}
+          className="border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px]"
+        >
+          Rate Limited
+        </Badge>
+      )
+    }
+    if (info.status === 'quota_reached') {
+      return (
+        <Badge
+          variant="outline"
+          title={info.quotaResetAt ? `Resets ${formatDateTime(info.quotaResetAt)}` : 'Quota reached'}
+          className="border-destructive/40 bg-destructive/10 text-destructive text-[10px]"
+        >
+          Quota Reached
+        </Badge>
+      )
+    }
+    if (info.status === 'error') {
+      return (
+        <Badge variant="destructive" className="text-[10px]">
+          Key Error
+        </Badge>
+      )
+    }
+    return (
+      <Badge variant="secondary" className="text-[10px] text-muted-foreground">
+        No Key
+      </Badge>
+    )
   }
 
   function getTierBadgeClass(tier: string) {
@@ -343,14 +427,31 @@ export default function BenchmarksPage() {
           </Select>
 
           <Select value={sortBy} onValueChange={(val) => setSortBy((val as any) ?? 'quality')}>
-            <SelectTrigger className="h-8 flex-1 sm:flex-initial sm:w-36 text-xs">
+            <SelectTrigger className="h-8 flex-1 sm:flex-initial sm:w-44 text-xs">
               <SelectValue placeholder="Sort By" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="quality">Quality Score</SelectItem>
               <SelectItem value="speed">Output Speed (tok/s)</SelectItem>
               <SelectItem value="ttfb">Fastest TTFB</SelectItem>
+              <SelectItem value="fast_text">Fastest No-Think (ms)</SelectItem>
+              <SelectItem value="last_tested">Recently Tested</SelectItem>
               <SelectItem value="name">Model Name</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedSuite} onValueChange={(val) => setSelectedSuite((val as BenchmarkSuite) ?? 'all')}>
+            <SelectTrigger className="h-8 flex-1 sm:flex-initial sm:w-44 text-xs" title="Benchmark use-case suite to run">
+              <SelectValue placeholder="Test Suite" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Suite: All Use Cases</SelectItem>
+              <SelectItem value="fast_text">Suite: Fast Text (No-Think)</SelectItem>
+              <SelectItem value="coding">Suite: Coding (TS)</SelectItem>
+              <SelectItem value="structured_json">Suite: JSON Extraction</SelectItem>
+              <SelectItem value="reasoning">Suite: Reasoning</SelectItem>
+              <SelectItem value="tools">Suite: Tool Calling</SelectItem>
+              <SelectItem value="speed">Suite: Raw Speed</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -366,17 +467,17 @@ export default function BenchmarksPage() {
       ) : (
         <div className="overflow-hidden rounded-2xl border bg-card shadow-xs">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[800px] text-left text-xs">
+            <table className="w-full min-w-[1050px] text-left text-xs">
               <thead>
                 <tr className="border-b bg-muted/30 font-medium text-muted-foreground">
                   <th className="px-4 py-3">Rank</th>
                   <th className="px-4 py-3">Model</th>
-                  <th className="px-4 py-3">Provider</th>
-                  <th className="px-4 py-3">Tier</th>
-                  <th className="px-4 py-3">Quality Score</th>
-                  <th className="px-4 py-3">Speed (tok/s)</th>
-                  <th className="px-4 py-3">TTFB (ms)</th>
-                  <th className="px-4 py-3">Tool Compliance</th>
+                  <th className="px-4 py-3">Provider & Status</th>
+                  <th className="px-4 py-3">Quality</th>
+                  <th className="px-4 py-3">Speed / TTFB</th>
+                  <th className="px-4 py-3">No-Think (ms)</th>
+                  <th className="px-4 py-3">Use Cases</th>
+                  <th className="px-4 py-3">Last Tested</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -400,27 +501,41 @@ export default function BenchmarksPage() {
                           <span title="Supports Tools"><Wrench className="size-3 text-emerald-500" /></span>
                         )}
                       </Link>
-                      <span className="font-mono text-[10px] text-muted-foreground block truncate max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl">
-                        {m.modelId}
-                      </span>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="font-mono text-[10px] text-muted-foreground truncate max-w-[200px]">
+                          {m.modelId}
+                        </span>
+                        <span className={`inline-flex items-center rounded border px-1.5 py-0 text-[9px] font-medium ${getTierBadgeClass(m.sizeLabel)}`}>
+                          {m.sizeLabel}
+                        </span>
+                      </div>
                     </td>
 
                     <td className="px-4 py-3.5">
-                      <Badge variant="outline" className="text-[10px] font-normal capitalize">
-                        {m.platform}
-                      </Badge>
-                    </td>
-
-                    <td className="px-4 py-3.5">
-                      <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-medium ${getTierBadgeClass(m.sizeLabel)}`}>
-                        {m.sizeLabel}
-                      </span>
+                      <div className="flex flex-col items-start gap-1">
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant="outline" className="text-[10px] font-normal capitalize">
+                            {m.platform}
+                          </Badge>
+                          {getRateLimitBadge(m.rateLimitInfo)}
+                        </div>
+                        {(m.rateLimitInfo?.rateLimitHits14d ?? 0) > 0 && (
+                          <span className="text-[10px] text-amber-600 dark:text-amber-400">
+                            {m.rateLimitInfo?.rateLimitHits14d} rate-limit hits (14d)
+                          </span>
+                        )}
+                        {m.rateLimitInfo?.quotaRemaining != null && m.rateLimitInfo?.quotaLimit != null && (
+                          <span className="text-[10px] text-muted-foreground font-mono">
+                            Quota: {m.rateLimitInfo.quotaRemaining.toLocaleString()} / {m.rateLimitInfo.quotaLimit.toLocaleString()}
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2">
                         <span className="font-bold tabular-nums text-foreground">{m.qualityScore}</span>
-                        <div className="h-1.5 w-16 rounded-full bg-muted overflow-hidden">
+                        <div className="h-1.5 w-14 rounded-full bg-muted overflow-hidden">
                           <div 
                             className="h-full bg-purple-500 rounded-full" 
                             style={{ width: `${Math.min(100, m.qualityScore)}%` }} 
@@ -432,22 +547,59 @@ export default function BenchmarksPage() {
                     <td className="px-4 py-3.5 font-mono tabular-nums">
                       <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
                         <Zap className="size-3" />
-                        {m.tokensPerSec}
+                        {m.tokensPerSec} tok/s
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {m.ttfbMs} ms TTFB
                       </div>
                     </td>
 
-                    <td className="px-4 py-3.5 font-mono tabular-nums text-muted-foreground">
-                      {m.ttfbMs} ms
+                    <td className="px-4 py-3.5 font-mono tabular-nums text-foreground">
+                      {m.fastTextMs != null ? (
+                        <span className="inline-flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 text-[11px] font-medium text-blue-600 dark:text-blue-400">
+                          {m.fastTextMs} ms
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-[11px]">—</span>
+                      )}
                     </td>
 
                     <td className="px-4 py-3.5">
-                      {m.supportsTools ? (
-                        <div className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium text-[11px]">
-                          <CheckCircle2 className="size-3" />
-                          {m.toolAccuracy ? `${m.toolAccuracy}%` : 'Supported'}
+                      <div className="flex flex-wrap gap-1 max-w-[180px]">
+                        {m.useCases?.coding != null && (
+                          <span className="rounded border px-1.5 py-0.5 text-[10px] font-mono" title="Code Generation">
+                            Code {m.useCases.coding}%
+                          </span>
+                        )}
+                        {m.useCases?.structuredJson != null && (
+                          <span className="rounded border px-1.5 py-0.5 text-[10px] font-mono" title="Structured JSON">
+                            JSON {m.useCases.structuredJson}%
+                          </span>
+                        )}
+                        {m.useCases?.reasoning != null && (
+                          <span className="rounded border px-1.5 py-0.5 text-[10px] font-mono" title="Reasoning">
+                            Logic {m.useCases.reasoning}%
+                          </span>
+                        )}
+                        {m.supportsTools && (
+                          <span className="rounded border border-emerald-500/30 bg-emerald-500/5 px-1.5 py-0.5 text-[10px] font-mono text-emerald-600 dark:text-emerald-400" title="Tool Calling">
+                            Tools {m.toolAccuracy != null ? `${m.toolAccuracy}%` : '✓'}
+                          </span>
+                        )}
+                        {m.useCases?.coding == null && m.useCases?.structuredJson == null && m.useCases?.reasoning == null && !m.supportsTools && (
+                          <span className="text-muted-foreground text-[10px]">Chat</span>
+                        )}
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                      <div className="text-[11px] text-foreground" title={m.lastBenchmarkedAt ?? m.lastTestedAt ?? 'Not yet tested'}>
+                        {formatDateTime(m.lastBenchmarkedAt ?? m.lastTestedAt)}
+                      </div>
+                      {m.sampleCount > 0 && (
+                        <div className="text-[10px] text-muted-foreground">
+                          {m.sampleCount} reqs
                         </div>
-                      ) : (
-                        <span className="text-muted-foreground text-[10px]">Chat only</span>
                       )}
                     </td>
 
@@ -505,6 +657,10 @@ export default function BenchmarksPage() {
               </div>
             ) : testResult ? (
               <div className="space-y-3">
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span>Tested at: <strong className="text-foreground">{formatDateTime(testResult.testedAt)}</strong></span>
+                  <span>Total: <strong className="text-foreground">{testResult.totalLatencyMs} ms</strong></span>
+                </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="rounded-xl border bg-muted/30 p-3">
                     <span className="text-muted-foreground block text-[10px] uppercase font-medium">Output Speed</span>
@@ -516,16 +672,21 @@ export default function BenchmarksPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2 pt-2">
-                  <span className="text-xs font-semibold text-foreground block">Task Results:</span>
+                <div className="space-y-2 pt-2 max-h-[300px] overflow-y-auto pr-1">
+                  <span className="text-xs font-semibold text-foreground block">Use-Case Task Results:</span>
                   {(testResult.taskResults ?? []).map((t: any) => (
-                    <div key={t.taskId} className="rounded-lg border p-2.5 text-xs flex items-center justify-between">
-                      <div>
-                        <div className="font-medium text-foreground">{t.name}</div>
-                        <div className="text-[11px] text-muted-foreground">{t.detail}</div>
+                    <div key={t.taskId} className="rounded-lg border p-2.5 text-xs flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="font-medium text-foreground flex items-center gap-2">
+                          <span>{t.name}</span>
+                          {t.latencyMs > 0 && (
+                            <span className="font-mono text-[10px] text-muted-foreground">{t.latencyMs}ms</span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground truncate">{t.detail}</div>
                       </div>
-                      <Badge variant={t.passed ? 'default' : 'destructive'} className="text-[10px]">
-                        {t.passed ? 'Passed' : 'Failed'}
+                      <Badge variant={t.passed ? 'default' : 'destructive'} className="text-[10px] shrink-0">
+                        {t.passed ? `${t.score}%` : 'Failed'}
                       </Badge>
                     </div>
                   ))}
