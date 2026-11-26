@@ -8,6 +8,7 @@ import { startCatalogSync } from './services/catalog-sync.js';
 import { startCooldownProbe } from './services/cooldown-probe.js';
 import { startModelProbe } from './services/model-probe.js';
 import { startCustomModelSync } from './services/custom-model-sync.js';
+import { startFreeModelSync } from './services/free-model-sync.js';
 import { startBuiltinModelDiscovery } from './services/builtin-model-discovery.js';
 import { startBenchmarkAutopilot } from './services/benchmark-autopilot.js';
 import { installProcessSafetyNet } from './lib/process-safety-net.js';
@@ -90,6 +91,7 @@ async function main() {
     startDbBackupPump(getDb(), scheduler, config.dbPath ?? undefined);
     startBackupScheduler(scheduler);
     startCustomModelSync(getDb(), scheduler);
+    startFreeModelSync(getDb(), scheduler);
     startBuiltinModelDiscovery(getDb(), scheduler);
     startBenchmarkAutopilot(scheduler);
 

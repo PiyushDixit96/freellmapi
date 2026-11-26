@@ -8,13 +8,14 @@ import { deleteUnusedCustomEndpointKey } from '../lib/custom-provider-cleanup.js
 import { budgetInputSchema } from '../lib/budget-input.js';
 import {
   isCatalogManagedModel,
-  isCatalogModelTombstoned,
   overriddenFieldNames,
   recordCatalogModelTombstone,
   clearCatalogModelTombstone,
   upsertModelOverrides,
   type ModelOverridePatch,
 } from '../services/model-state.js';
+import { syncFreeModels } from '../services/free-model-sync.js';
+import { clearCooldownEarly } from '../services/ratelimit.js';
 import { pruneUnavailableSavedFusionConfig } from '../services/fusion.js';
 import { getActiveProfileId, ensureModelInProfiles } from '../services/profile-models.js';
 import { endpointScopeForBaseUrl, endpointScopeOfKey, qualifiedModelMemberId } from '../lib/endpoint-scope.js';
@@ -560,90 +561,32 @@ modelsRouter.get('/', (_req: Request, res: Response) => {
 
 // Sync newly published free/keyless models from live provider catalogs (#free-sync)
 modelsRouter.post('/sync-free', async (_req: Request, res: Response) => {
-  const db = getDb();
-  const enabledPlatforms = new Set(
-    (db.prepare('SELECT DISTINCT platform FROM api_keys WHERE enabled = 1').all() as { platform: string }[])
-      .map(r => r.platform),
-  );
+  const result = await syncFreeModels(getDb());
+  res.json(result);
+});
 
-  const sources: Array<{
-    platform: Platform;
-    url: string;
-    filter: (id: string) => boolean;
-  }> = [
-    {
-      platform: 'kilo',
-      url: 'https://api.kilo.ai/api/gateway/models',
-      filter: (id) => id.includes(':free') || id.includes('/free'),
-    },
-    {
-      platform: 'ovh',
-      url: 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/models',
-      filter: (id) => !/(tts|asr|whisper|embed|bge|rerank|diffusion|translate|summarise)/i.test(id),
-    },
-    {
-      platform: 'gonkabroker',
-      url: 'https://proxy.gonkabroker.com/v1/models',
-      filter: (id) => !/(embed|bge|rerank)/i.test(id),
-    },
-    {
-      platform: 'cheapllm',
-      url: 'https://cheapllm.shop/v1/models',
-      filter: (id) => !/(embed|bge|rerank)/i.test(id),
-    },
-  ];
-
-  const added: Array<{ platform: string; modelId: string; id: number }> = [];
-  const checkedPlatforms: string[] = [];
-  const errors: Array<{ platform: string; error: string }> = [];
-  const seed = customModelSeed(db);
-
-  for (const src of sources) {
-    if (!enabledPlatforms.has(src.platform)) continue;
-    checkedPlatforms.push(src.platform);
-    try {
-      const resp = await fetch(src.url, { signal: AbortSignal.timeout(10_000) });
-      if (!resp.ok) {
-        errors.push({ platform: src.platform, error: `HTTP ${resp.status}` });
-        continue;
-      }
-      const json = await resp.json() as { data?: Array<{ id?: string; name?: string; context_length?: number; supported_parameters?: string[] }> };
-      const rows = Array.isArray(json?.data) ? json.data : [];
-      for (const item of rows) {
-        const modelId = item?.id?.trim();
-        if (!modelId || !src.filter(modelId)) continue;
-        const exists = db.prepare(
-          "SELECT 1 FROM models WHERE platform = ? AND model_id = ? AND endpoint_scope = ''",
-        ).get(src.platform, modelId);
-        if (exists || isCatalogModelTombstoned(db, 'chat', src.platform, modelId)) continue;
-
-        const supportsTools = Array.isArray(item.supported_parameters)
-          ? item.supported_parameters.includes('tools') ? 1 : 0
-          : 1;
-        const contextWindow = typeof item.context_length === 'number' && item.context_length > 0
-          ? item.context_length
-          : 131072;
-        const displayName = item.name?.trim() || modelId;
-
-        const insertedId = db.transaction(() => {
-          const info = db.prepare(`
-            INSERT INTO models (
-              platform, model_id, display_name, intelligence_rank, speed_rank, size_label,
-              context_window, enabled, supports_vision, supports_tools, source, endpoint_scope
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0, ?, 'discovered', '')
-          `).run(src.platform, modelId, displayName, seed.intelligenceRank, seed.speedRank, seed.sizeLabel, contextWindow, supportsTools);
-          const modelDbId = Number(info.lastInsertRowid);
-          const max = db.prepare('SELECT COALESCE(MAX(priority), 0) AS m FROM fallback_config').get() as { m: number };
-          db.prepare('INSERT INTO fallback_config (model_db_id, priority, enabled) VALUES (?, ?, 1)').run(modelDbId, max.m + 1);
-          ensureModelInProfiles(db, modelDbId);
-          return modelDbId;
-        })();
-        added.push({ platform: src.platform, modelId, id: insertedId });
-      }
-    } catch (err: any) {
-      errors.push({ platform: src.platform, error: err?.message ?? String(err) });
-    }
+// Clear active cooldowns for a specific model across its enabled keys
+modelsRouter.delete('/:id/cooldowns', (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ error: { message: 'Invalid id' } });
+    return;
   }
 
-  res.json({ checkedPlatforms, addedCount: added.length, added, errors });
+  const row = fetchModelRow(id);
+  if (!row) {
+    res.status(404).json({ error: { message: `Unknown model ${id}` } });
+    return;
+  }
+
+  const db = getDb();
+  const activeRows = db.prepare(
+    'SELECT key_id FROM rate_limit_cooldowns WHERE platform = ? AND model_id = ?',
+  ).all(row.platform, row.model_id) as Array<{ key_id: number }>;
+
+  for (const r of activeRows) {
+    clearCooldownEarly(row.platform, row.model_id, r.key_id);
+  }
+
+  res.json({ success: true, cleared: activeRows.length, platform: row.platform, modelId: row.model_id });
 });

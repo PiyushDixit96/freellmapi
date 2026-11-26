@@ -439,6 +439,57 @@ export default function ModelDetailPage() {
                     </div>
                   )}
 
+                  {/* Benchmark Trend History Chart */}
+                  {Array.isArray(benchmarkDetail.recentProbes) && benchmarkDetail.recentProbes.some((p: any) => ['tokens_per_sec', 'ttfb_ms', 'fast_text_ms'].includes(p.metricName)) && (
+                    <div className="space-y-3 pt-2">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                        <Activity className="size-3.5 text-blue-500" />
+                        Benchmark Trend History
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {([
+                          { key: 'tokens_per_sec', label: 'Throughput (tok/s)', unit: 'tok/s', color: 'bg-emerald-500' },
+                          { key: 'ttfb_ms', label: 'TTFB (ms)', unit: 'ms', color: 'bg-blue-500' },
+                          { key: 'fast_text_ms', label: 'No-Think Latency (ms)', unit: 'ms', color: 'bg-purple-500' },
+                        ] as const).map(series => {
+                          const pts = (benchmarkDetail.recentProbes as any[])
+                            .filter(p => p.metricName === series.key)
+                            .slice(0, 8)
+                            .reverse()
+                          if (pts.length === 0) return null
+                          const maxVal = Math.max(...pts.map(p => Number(p.score) || 1), 1)
+                          return (
+                            <div key={series.key} className="rounded-xl border bg-muted/10 p-3 space-y-2">
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className="font-medium text-foreground">{series.label}</span>
+                                <span className="font-mono text-muted-foreground">
+                                  Latest: {pts[pts.length - 1].score} {series.unit}
+                                </span>
+                              </div>
+                              <div className="flex items-end gap-1.5 h-16 pt-1">
+                                {pts.map((pt: any) => {
+                                  const pct = Math.max(12, Math.round((Number(pt.score) / maxVal) * 100))
+                                  return (
+                                    <div
+                                      key={pt.id}
+                                      className="flex-1 flex flex-col items-center justify-end h-full group"
+                                      title={`${pt.score} ${series.unit} (${pt.recordedAt})`}
+                                    >
+                                      <div
+                                        className={`w-full rounded-t ${series.color}/80 group-hover:${series.color} transition-all`}
+                                        style={{ height: `${pct}%` }}
+                                      />
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Provider Comparison Matrix */}
                   {benchmarkDetail.providerComparisons?.length > 1 && (
                     <div className="space-y-2 pt-2">

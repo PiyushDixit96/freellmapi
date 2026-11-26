@@ -214,6 +214,18 @@ export default function BenchmarksPage() {
     },
   })
 
+  // Clear cooldown mutation for rate-limited models
+  const clearCooldownMutation = useMutation({
+    mutationFn: (modelDbId: number) => apiFetch<{ cleared: number }>(`/api/models/${modelDbId}/cooldowns`, { method: 'DELETE' }),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['benchmarks'] })
+      toast.success(res.cleared > 0 ? `Cleared ${res.cleared} active cooldown(s)` : 'Cooldown cleared')
+    },
+    onError: (err: any) => {
+      toast.error(`Failed to clear cooldown: ${err?.message ?? err}`)
+    },
+  })
+
   // Paced batch benchmark queue for ready models
   const [batchProgress, setBatchProgress] = useState<{ current: number; total: number; currentModel: string; aborted: boolean } | null>(null)
 
@@ -591,6 +603,17 @@ export default function BenchmarksPage() {
                             {m.platform}
                           </Badge>
                           {getRateLimitBadge(m.rateLimitInfo)}
+                          {m.rateLimitInfo?.status === 'rate_limited' && (
+                            <button
+                              type="button"
+                              onClick={() => clearCooldownMutation.mutate(m.modelDbId)}
+                              disabled={clearCooldownMutation.isPending}
+                              className="rounded border border-amber-500/30 px-1.5 py-0 text-[10px] text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              title="Clear active cooldown and re-enable for testing"
+                            >
+                              Clear
+                            </button>
+                          )}
                         </div>
                         {(m.rateLimitInfo?.rateLimitHits14d ?? 0) > 0 && (
                           <span className="text-[10px] text-amber-600 dark:text-amber-400">
