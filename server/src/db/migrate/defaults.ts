@@ -180,6 +180,6 @@ export const DEFAULT_MIGRATIONS: readonly DefaultMigration[] = [
   { filename: EMBEDDING_RATE_LIMITS_FILENAME, module: embeddingRateLimits },
   { filename: CUSTOM_EMBEDDING_INPUT_TYPE_FILENAME, module: customEmbeddingInputType },
   { filename: EMBEDDING_SOURCE_PROVENANCE_FILENAME, module: embeddingSourceProvenance },
-  { filename: OIDC_IDENTITIES_FILENAME, module: oidcIdentities },
   { filename: MODEL_BENCHMARKS_FILENAME, module: modelBenchmarks },
+  { filename: OIDC_IDENTITIES_FILENAME, module: oidcIdentities },
 ];

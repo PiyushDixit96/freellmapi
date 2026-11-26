@@ -100,7 +100,7 @@ describe('decision routing (#1354)', () => {
     // One choice question whose options are exactly the four presets.
     const body = JSON.parse((fn.mock.calls[0] as unknown as [string, RequestInit])[1].body as string);
     expect(Object.keys(body.questions)).toEqual(['strategy']);
-    expect(Object.keys(body.questions.strategy.criteria).sort()).toEqual(['balanced', 'fastest', 'reliable', 'smartest']);
+    expect(Object.keys(body.questions.strategy.criteria).sort()).toEqual(['balanced', 'benchmark', 'fastest', 'reliable', 'smartest']);
     expect(body.state).toContain('square root of 2');
     // Logged as the router's own decision, not as the chat client's.
     const log = getDb().prepare('SELECT client_agent, status FROM decision_requests').all();
@@ -197,7 +197,7 @@ describe('decision routing (#1354)', () => {
     await applyDecisionRouting([user('hi')]);
     await applyDecisionRouting([]);
     const stats = getDecisionRoutingStats();
-    expect(stats.counts).toEqual({ smartest: 0, fastest: 1, balanced: 1, reliable: 0 });
+    expect(stats.counts).toEqual({ smartest: 0, fastest: 1, balanced: 1, reliable: 0, benchmark: 0 });
     expect(stats.fallbacks).toEqual({ unavailable: 1 });
     expect(stats.recent.map(r => r.source)).toEqual(['unavailable', 'decision']);
   });

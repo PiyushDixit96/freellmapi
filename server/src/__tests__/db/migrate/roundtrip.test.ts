@@ -165,8 +165,8 @@ describe('migration round trip', () => {
         EMBEDDING_RATE_LIMITS_FILENAME,
         CUSTOM_EMBEDDING_INPUT_TYPE_FILENAME,
         EMBEDDING_SOURCE_PROVENANCE_FILENAME,
-        OIDC_IDENTITIES_FILENAME,
         MODEL_BENCHMARKS_FILENAME,
+        OIDC_IDENTITIES_FILENAME,
       ]);
     } finally {
       db.close();
