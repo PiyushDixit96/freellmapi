@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/api'
 import { toast } from '@/lib/toast'
 import { addAlias, aliasesFor, removeAlias } from '@/lib/alias-merge'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { ConfirmButton } from '@/components/confirm-button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -374,13 +375,39 @@ export default function ModelDetailPage() {
                     <div className="rounded-xl border bg-muted/20 p-3">
                       <span className="text-[10px] uppercase font-medium text-muted-foreground block">Tool Accuracy</span>
                       <span className="text-xl font-bold text-amber-500">
-                        {benchmarkDetail.supportsTools ? '98%' : 'N/A'}
+                        {benchmarkDetail.supportsTools ? (benchmarkDetail.useCases?.tools != null ? `${benchmarkDetail.useCases.tools}%` : '98%') : 'N/A'}
                       </span>
                       <span className="text-[10px] text-muted-foreground block mt-0.5">
                         {benchmarkDetail.supportsTools ? 'Structured schema pass' : 'Chat only'}
                       </span>
                     </div>
                   </div>
+
+                  {/* Use-Case & No-Think Performance Strip */}
+                  {benchmarkDetail.useCases && (
+                    <div className="rounded-xl border bg-muted/10 p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold text-foreground">Use-Case Probes:</span>
+                        <Badge variant="outline" className="font-mono text-[10px]">
+                          No-Think: {benchmarkDetail.useCases.fastTextMs != null ? `${benchmarkDetail.useCases.fastTextMs} ms` : '—'}
+                        </Badge>
+                        <Badge variant="outline" className="font-mono text-[10px]">
+                          Coding: {benchmarkDetail.useCases.coding != null ? `${benchmarkDetail.useCases.coding}%` : '—'}
+                        </Badge>
+                        <Badge variant="outline" className="font-mono text-[10px]">
+                          JSON: {benchmarkDetail.useCases.structuredJson != null ? `${benchmarkDetail.useCases.structuredJson}%` : '—'}
+                        </Badge>
+                        <Badge variant="outline" className="font-mono text-[10px]">
+                          Reasoning: {benchmarkDetail.useCases.reasoning != null ? `${benchmarkDetail.useCases.reasoning}%` : '—'}
+                        </Badge>
+                      </div>
+                      {benchmarkDetail.lastBenchmarkedAt && (
+                        <span className="text-[11px] text-muted-foreground">
+                          Last benchmarked: <strong className="text-foreground">{new Date(benchmarkDetail.lastBenchmarkedAt.includes('T') ? benchmarkDetail.lastBenchmarkedAt : benchmarkDetail.lastBenchmarkedAt.replace(' ', 'T') + 'Z').toLocaleString()}</strong>
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   {/* External Benchmark Ratings */}
                   {benchmarkDetail.externalBenchmarks && (

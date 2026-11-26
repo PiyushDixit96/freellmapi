@@ -4,13 +4,13 @@ import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, path.resolve(__dirname, '..'), '')
+  const env = loadEnv(mode, path.resolve(import.meta.dirname, '..'), '')
   const serverPort = env.PORT ?? process.env.PORT ?? 3001
 
   return {
     plugins: [react(), tailwindcss()],
     base: process.env.VITE_BASE ?? '/',
-    envDir: path.resolve(__dirname, '..'),
+    envDir: path.resolve(import.meta.dirname, '..'),
     define: {
       __SERVER_PORT__: JSON.stringify(String(serverPort)),
     },

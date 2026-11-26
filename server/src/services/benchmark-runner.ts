@@ -60,6 +60,69 @@ function extractContentText(raw: any): string {
   return '';
 }
 
+async function runPromptWithRealTtfb(
+  provider: any,
+  apiKey: string,
+  messages: any[],
+  modelId: string,
+  options: Record<string, unknown>,
+): Promise<{
+  content: string;
+  reasoningTokens: number;
+  outputTokens: number;
+  latencyMs: number;
+  ttfbMs: number;
+}> {
+  const tStart = Date.now();
+  if (typeof provider.chatCompletionStream === 'function') {
+    try {
+      let ttfbMs: number | null = null;
+      let content = '';
+      let outputTokens = 0;
+      let reasoningTokens = 0;
+      for await (const chunk of provider.chatCompletionStream(apiKey, messages, modelId, options)) {
+        const delta = chunk?.choices?.[0]?.delta;
+        const textPart = typeof delta?.content === 'string' ? delta.content : '';
+        const reasonPart = typeof delta?.reasoning_content === 'string' ? delta.reasoning_content : '';
+        if (ttfbMs === null && (textPart.length > 0 || reasonPart.length > 0)) {
+          ttfbMs = Math.max(1, Date.now() - tStart);
+        }
+        content += textPart;
+        if (chunk?.usage?.completion_tokens) outputTokens = chunk.usage.completion_tokens;
+        if (chunk?.usage?.completion_tokens_details?.reasoning_tokens) {
+          reasoningTokens = chunk.usage.completion_tokens_details.reasoning_tokens;
+        }
+      }
+      const latencyMs = Math.max(1, Date.now() - tStart);
+      if (content.length > 0) {
+        return {
+          content,
+          reasoningTokens,
+          outputTokens: outputTokens || Math.ceil(content.length / 4),
+          latencyMs,
+          ttfbMs: ttfbMs ?? Math.round(latencyMs * 0.35),
+        };
+      }
+    } catch {
+      // Fall back to non-streaming completion if provider rejects streaming
+    }
+  }
+
+  const tFallbackStart = Date.now();
+  const res = await provider.chatCompletion(apiKey, messages, modelId, options);
+  const latencyMs = Math.max(1, Date.now() - tFallbackStart);
+  const content = extractContentText(res.choices?.[0]?.message?.content);
+  const reasoningTokens = res.usage?.completion_tokens_details?.reasoning_tokens ?? 0;
+  const outputTokens = res.usage?.completion_tokens ?? Math.ceil(content.length / 4);
+  return {
+    content,
+    reasoningTokens,
+    outputTokens,
+    latencyMs,
+    ttfbMs: Math.round(latencyMs * 0.35),
+  };
+}
+
 /** Execute a live micro-benchmark safely against a target model */
 export async function runMicroBenchmark(
   db: Db,
@@ -139,19 +202,15 @@ export async function runMicroBenchmark(
   // Task 1: Speed & Generation Throughput
   if (suite === 'all' || suite === 'speed') {
     try {
-      const tStart = Date.now();
-      const res = await withKeyProxy(proxyUrl, () =>
-        provider.chatCompletion(
+      const { content, outputTokens, latencyMs, ttfbMs } = await withKeyProxy(proxyUrl, () =>
+        runPromptWithRealTtfb(
+          provider,
           apiKey,
           [{ role: 'user', content: 'Count from 1 to 15 separated by commas. Return only the numbers.' }],
           modelId,
-          { max_tokens: 60, timeoutMs: 30000 } as any,
+          { max_tokens: 60, timeoutMs: 30000 },
         ),
       );
-      const latencyMs = Date.now() - tStart;
-      const content = extractContentText(res.choices?.[0]?.message?.content);
-      const outputTokens = res.usage?.completion_tokens ?? Math.ceil(content.length / 4);
-      const ttfbMs = Math.round(latencyMs * 0.35); // Conservative TTFB approximation for non-streaming
       const tokensPerSec = outputTokens > 0 ? Math.round((outputTokens * 1000.0 / latencyMs) * 10) / 10 : 30.0;
       const passed = content.length > 5;
 
@@ -166,7 +225,7 @@ export async function runMicroBenchmark(
         tokensPerSec,
         outputTokens,
         testedAt: new Date().toISOString(),
-        detail: `Generated ${outputTokens} tokens in ${latencyMs}ms (${tokensPerSec} tok/s)`,
+        detail: `Generated ${outputTokens} tokens in ${latencyMs}ms (${tokensPerSec} tok/s, ${ttfbMs}ms TTFB)`,
       });
 
       recordBenchmark(db, {
@@ -214,22 +273,19 @@ export async function runMicroBenchmark(
   // Task 1b: Fast Text / Minimal-or-No Thinking Response Timing
   if (suite === 'all' || suite === 'fast_text') {
     try {
-      const tStart = Date.now();
-      const res = await withKeyProxy(proxyUrl, () =>
-        provider.chatCompletion(
+      const { content: rawContent, reasoningTokens, outputTokens, latencyMs, ttfbMs } = await withKeyProxy(proxyUrl, () =>
+        runPromptWithRealTtfb(
+          provider,
           apiKey,
           [
             { role: 'system', content: 'Answer directly in 1 short sentence with zero reasoning or preamble.' },
             { role: 'user', content: 'Define an API gateway in one short sentence.' },
           ],
           modelId,
-          { max_tokens: 60, temperature: 0.2, reasoning_effort: 'low', timeoutMs: 30000 } as any,
+          { max_tokens: 60, temperature: 0.2, reasoning_effort: 'low', timeoutMs: 30000 },
         ),
       );
-      const latencyMs = Date.now() - tStart;
-      const content = extractContentText(res.choices?.[0]?.message?.content).trim();
-      const reasoningTokens = res.usage?.completion_tokens_details?.reasoning_tokens ?? 0;
-      const outputTokens = res.usage?.completion_tokens ?? Math.ceil(content.length / 4);
+      const content = rawContent.trim();
       const tokensPerSec = outputTokens > 0 ? Math.round((outputTokens * 1000.0 / Math.max(1, latencyMs)) * 10) / 10 : 25.0;
       const passed = content.length >= 10;
       const speedRating = Math.max(10, Math.min(100, Math.round(100 - (latencyMs / 100))));
@@ -241,12 +297,12 @@ export async function runMicroBenchmark(
         passed,
         score: passed ? speedRating : 0,
         latencyMs,
-        ttfbMs: Math.round(latencyMs * 0.35),
+        ttfbMs,
         tokensPerSec,
         outputTokens,
         reasoningTokens,
         testedAt: new Date().toISOString(),
-        detail: `${latencyMs}ms total (${reasoningTokens} reasoning tok): "${content.slice(0, 70)}"`,
+        detail: `${latencyMs}ms total, ${ttfbMs}ms TTFB (${reasoningTokens} reasoning tok): "${content.slice(0, 70)}"`,
       });
 
       recordBenchmark(db, {

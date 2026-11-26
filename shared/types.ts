@@ -158,6 +158,9 @@ export type Platform =
   // tier of at least 5,000 input + 1,000 output tokens per hour per account.
   // Email sign-up, no card. Hosted catalog only (no migration seed).
   | 'cheapllm'
+  // GonkaBroker — OpenAI-compatible proxy (proxy.gonkabroker.com/v1) with a
+  // free 6 RPM tier (no card required).
+  | 'gonkabroker'
   // LLM.kiwi - OpenAI-compatible. Ongoing free plan, no card: `auto` and
   // `hrllm` only (other models answer 403 pro_model_access_denied). 20
   // requests/minute per account from its x-ratelimit headers, 2026-11-23.

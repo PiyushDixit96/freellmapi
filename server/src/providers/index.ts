@@ -221,6 +221,14 @@ register(new OpenAICompatProvider({
   timeoutMs: 180_000,
 }));
 
+// GonkaBroker — OpenAI-compatible proxy (https://proxy.gonkabroker.com/v1)
+// with a free 6 RPM tier (no card required).
+register(new OpenAICompatProvider({
+  platform: 'gonkabroker',
+  name: 'GonkaBroker',
+  baseUrl: 'https://proxy.gonkabroker.com/v1',
+}));
+
 // LLM.kiwi - free plan serves `auto` and `hrllm` (see llmkiwi.ts for the key
 // check). Model rows live in the hosted catalog.
 register(new LlmKiwiProvider());

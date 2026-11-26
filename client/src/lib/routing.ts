@@ -491,6 +491,7 @@ export const platformColors: Record<string, string> = {
   powertokens: '#7c3aed',
   puter:       '#496bcb',
   cheapllm:    '#c8102e',
+  gonkabroker: '#059669',
   llmkiwi:     '#7cb518',
   tokenreply:  '#5b5bd6',
   modelscope:  '#624aff',

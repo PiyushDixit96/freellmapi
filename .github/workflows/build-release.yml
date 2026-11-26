@@ -28,9 +28,19 @@ on:
         required: true
         default: 'latest'
         type: string
+      create_release:
+        description: 'Attach Windows installers to a GitHub Release'
+        required: true
+        default: false
+        type: boolean
+      release_tag:
+        description: 'Release tag (used when create_release is enabled)'
+        required: false
+        default: ''
+        type: string
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -141,3 +151,17 @@ jobs:
             desktop/dist-electron/*.zip
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish GitHub Release
+        if: ${{ inputs.create_release == true }}
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ inputs.release_tag || format('v0.16.45-{0}', github.run_number) }}
+          generate_release_notes: true
+          files: |
+            desktop/dist-electron/*.exe
+            desktop/dist-electron/*.msi
+            desktop/dist-electron/*.zip
+            desktop/dist-electron/latest.yml

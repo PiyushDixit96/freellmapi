@@ -197,6 +197,59 @@ export default function BenchmarksPage() {
     },
   })
 
+  // Sync live free/keyless models mutation
+  const syncFreeMutation = useMutation({
+    mutationFn: () => apiFetch<{ checkedPlatforms: string[]; addedCount: number }>('/api/models/sync-free', { method: 'POST' }),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['benchmarks'] })
+      queryClient.invalidateQueries({ queryKey: ['models'] })
+      if (res.addedCount > 0) {
+        toast.success(`Discovered ${res.addedCount} new free model(s) across ${res.checkedPlatforms.join(', ')}`)
+      } else {
+        toast.info(`Free catalog is up to date (checked ${res.checkedPlatforms.length} platform(s))`)
+      }
+    },
+    onError: (err: any) => {
+      toast.error(`Free model sync failed: ${err?.message ?? err}`)
+    },
+  })
+
+  // Paced batch benchmark queue for ready models
+  const [batchProgress, setBatchProgress] = useState<{ current: number; total: number; currentModel: string; aborted: boolean } | null>(null)
+
+  async function handleBatchBenchmark() {
+    const readyModels = filteredModels.filter(m => !m.rateLimitInfo || m.rateLimitInfo.status === 'ready').slice(0, 10)
+    if (readyModels.length === 0) {
+      toast.info('No ready models in the current view to benchmark')
+      return
+    }
+    let aborted = false
+    setBatchProgress({ current: 0, total: readyModels.length, currentModel: readyModels[0].modelId, aborted: false })
+    for (let i = 0; i < readyModels.length; i++) {
+      const m = readyModels[i]
+      let shouldStop = false
+      setBatchProgress(prev => {
+        if (prev?.aborted) shouldStop = true
+        return prev ? { ...prev, current: i + 1, currentModel: m.modelId } : null
+      })
+      if (shouldStop || aborted) break
+      try {
+        await apiFetch('/api/benchmarks/run', {
+          method: 'POST',
+          body: JSON.stringify({ platform: m.platform, modelId: m.modelId, suite: selectedSuite }),
+        })
+      } catch {
+        // Continue paced queue
+      }
+      if (i < readyModels.length - 1) {
+        await new Promise(r => setTimeout(r, 1500))
+      }
+    }
+    setBatchProgress(null)
+    queryClient.invalidateQueries({ queryKey: ['benchmarks'] })
+    toast.success(`Batch benchmark finished (${readyModels.length} ready models checked)`)
+  }
+
   function handleRunTest(m: ModelBenchmarkSummary, suite: BenchmarkSuite = selectedSuite) {
     setTestingModel(m)
     setTestResult(null)
@@ -262,6 +315,26 @@ export default function BenchmarksPage() {
         description="Comprehensive quality scores, verified tool-calling accuracy, real-world TTFB, and live token throughput across all free model endpoints."
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBatchBenchmark}
+              disabled={Boolean(batchProgress)}
+              title="Sequentially benchmark up to 10 ready models in the current list"
+            >
+              <Play className={`mr-1.5 size-4 text-emerald-500 ${batchProgress ? 'animate-pulse' : ''}`} />
+              {batchProgress ? `Running ${batchProgress.current}/${batchProgress.total}...` : 'Benchmark Ready'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => syncFreeMutation.mutate()}
+              disabled={syncFreeMutation.isPending}
+              title="Discover newly published free/keyless models from enabled providers"
+            >
+              <Sparkles className={`mr-1.5 size-4 text-purple-500 ${syncFreeMutation.isPending ? 'animate-spin' : ''}`} />
+              Sync Free Models
+            </Button>
             <Button
               variant="outline"
               size="sm"

@@ -103,6 +103,8 @@ export interface ModelBenchmarkDetail {
     details: any;
     recordedAt: string;
   }>;
+  useCases: ModelBenchmarkUseCases;
+  lastBenchmarkedAt: string | null;
 }
 
 /** Record a benchmark result into model_benchmarks */
@@ -642,19 +644,37 @@ export function getModelBenchmarkDetail(db: Db, modelParam: string): ModelBenchm
 
   // Recent micro-probes
   const recentProbes = db.prepare(`
-    SELECT id, benchmark_suite AS suite, metric_name AS metricName, metric_value AS score,
+    SELECT id, source, benchmark_suite AS suite, metric_name AS metricName, metric_value AS score,
            details_json, recorded_at AS recordedAt
     FROM model_benchmarks
     WHERE platform = ? AND model_id = ?
     ORDER BY id DESC LIMIT 20
   `).all(platform, modelId) as Array<{
     id: number;
+    source: string;
     suite: string;
     metricName: string;
     score: number;
     details_json: string | null;
     recordedAt: string;
   }>;
+
+  const useCases: ModelBenchmarkUseCases = {
+    fastTextMs: null,
+    coding: null,
+    structuredJson: null,
+    reasoning: null,
+    tools: null,
+  };
+  let lastBenchmarkedAt: string | null = null;
+  for (const p of [...recentProbes].reverse()) {
+    if (p.metricName === 'fast_text_ms') useCases.fastTextMs = p.score;
+    if (p.metricName === 'coding_accuracy') useCases.coding = p.score;
+    if (p.metricName === 'json_accuracy') useCases.structuredJson = p.score;
+    if (p.metricName === 'math_accuracy') useCases.reasoning = p.score;
+    if (p.metricName === 'tool_call_accuracy') useCases.tools = p.score;
+    if (p.source === 'micro_probe') lastBenchmarkedAt = p.recordedAt;
+  }
 
   const mappedProbes = recentProbes.map(p => {
     let details: any = null;
@@ -695,6 +715,8 @@ export function getModelBenchmarkDetail(db: Db, modelParam: string): ModelBenchm
     },
     providerComparisons,
     recentProbes: mappedProbes,
+    useCases,
+    lastBenchmarkedAt,
   };
 }
 
@@ -732,7 +754,7 @@ export function getBenchmarkScoreMap(db?: Db): Map<string, BenchmarkQualityEntry
     const rows = database.prepare(`
       SELECT platform, model_id, metric_name, metric_value
       FROM model_benchmarks
-      WHERE metric_name IN ('aa_intelligence', 'arena_elo', 'swe_bench', 'tool_call_accuracy', 'tokens_per_sec')
+      WHERE metric_name IN ('aa_intelligence', 'arena_elo', 'swe_bench', 'tool_call_accuracy', 'tokens_per_sec', 'fast_text_ms')
       ORDER BY id ASC
     `).all() as Array<{
       platform: string;
@@ -749,6 +771,7 @@ export function getBenchmarkScoreMap(db?: Db): Map<string, BenchmarkQualityEntry
       swe?: number;
       tool?: number;
       speed?: number;
+      fastTextMs?: number;
     }>();
 
     for (const r of rows) {
@@ -762,13 +785,18 @@ export function getBenchmarkScoreMap(db?: Db): Map<string, BenchmarkQualityEntry
       if (r.metric_name === 'swe_bench') item.swe = r.metric_value;
       if (r.metric_name === 'tool_call_accuracy') item.tool = r.metric_value;
       if (r.metric_name === 'tokens_per_sec') item.speed = r.metric_value;
+      if (r.metric_name === 'fast_text_ms') item.fastTextMs = r.metric_value;
     }
 
     for (const [key, item] of interim) {
       const q = computeQualityIndex(item.aa ?? null, item.elo ?? null, item.swe ?? null);
+      const tpsScore = item.speed ? Math.min(100, Math.round(item.speed)) : 60;
+      const fastBoost = item.fastTextMs != null
+        ? Math.max(10, Math.min(100, Math.round(100 - item.fastTextMs / 80)))
+        : tpsScore;
       const entry: BenchmarkQualityEntry = {
         qualityScore: q,
-        speedScore: item.speed ? Math.min(100, Math.round(item.speed)) : 60,
+        speedScore: Math.round(tpsScore * 0.65 + fastBoost * 0.35),
         toolAccuracy: item.tool ?? null,
       };
       map.set(key, entry);
