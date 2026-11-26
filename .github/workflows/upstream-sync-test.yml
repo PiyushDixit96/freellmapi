@@ -87,17 +87,38 @@ jobs:
         run: |
           echo "Executing sync strategy: $STRATEGY with upstream/$UPSTREAM_BRANCH..."
           if [ "$STRATEGY" = "rebase" ]; then
-            if git rebase upstream/$UPSTREAM_BRANCH; then
-              echo "sync_status=clean-rebase" >> $GITHUB_OUTPUT
-              echo "Clean rebase succeeded."
-            else
-              echo "sync_status=conflict-rebase" >> $GITHUB_OUTPUT
-              echo "Rebase conflicts detected in:"
-              git diff --name-only --diff-filter=U
-              git rebase --abort || true
-              echo "::error::Rebase conflicts detected with upstream. Manual resolution required."
-              exit 1
+            if ! git rebase upstream/$UPSTREAM_BRANCH; then
+              # Auto-resolve modify/delete conflicts on intentionally removed upstream workflows
+              while [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ]; do
+                CONFLICTS=$(git diff --name-only --diff-filter=U)
+                if [ -z "$CONFLICTS" ]; then
+                  break
+                fi
+                ONLY_REMOVED_WORKFLOWS=true
+                for f in $CONFLICTS; do
+                  case "$f" in
+                    .github/workflows/ci.yml|.github/workflows/cli-release.yml|.github/workflows/desktop-release.yml|.github/workflows/docker.yml)
+                      git rm -f "$f"
+                      ;;
+                    *)
+                      ONLY_REMOVED_WORKFLOWS=false
+                      ;;
+                  esac
+                done
+                if [ "$ONLY_REMOVED_WORKFLOWS" = true ]; then
+                  GIT_EDITOR=true git rebase --continue && break || true
+                else
+                  echo "sync_status=conflict-rebase" >> $GITHUB_OUTPUT
+                  echo "Rebase conflicts detected in:"
+                  echo "$CONFLICTS"
+                  git rebase --abort || true
+                  echo "::error::Rebase conflicts detected with upstream. Manual resolution required."
+                  exit 1
+                fi
+              done
             fi
+            echo "sync_status=clean-rebase" >> $GITHUB_OUTPUT
+            echo "Clean rebase succeeded."
           else
             if git merge upstream/$UPSTREAM_BRANCH --no-commit; then
               echo "sync_status=clean-merge" >> $GITHUB_OUTPUT
